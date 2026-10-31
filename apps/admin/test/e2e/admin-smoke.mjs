@@ -54,6 +54,9 @@ try {
   await page.fill("#code", "000000");
   await page.click("button:has-text('Sign in')");
   await page.getByText("Those details are not correct.").waitFor();
+  // React clears a form after its action runs, so fill everything again.
+  await page.fill("#username", "owner");
+  await page.fill("#password", PASSWORD);
   await page.fill("#code", totp(SECRET));
   await page.click("button:has-text('Sign in')");
   await page.waitForURL(`${ADMIN}/`);
