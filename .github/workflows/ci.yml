@@ -32,3 +32,41 @@ jobs:
         run: npm audit --audit-level=high --omit=dev
       - run: npm run build -w @demo/web
       - run: npm run build -w @demo/admin
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: demo_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/demo_test
+      FIELD_ENCRYPTION_KEYS: k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      BLIND_INDEX_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - name: Apply migrations to a fresh database
+        run: npx -w @demo/db prisma migrate deploy
+      - name: Fail if the schema has changes without a migration
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE shadow"
+          npx -w @demo/db prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url mysql://root:root@127.0.0.1:3306/shadow \
+            --exit-code
+      - name: Integration tests (accounts, reports, evidence, audit chain)
+        run: npm run test:integration -w @demo/web

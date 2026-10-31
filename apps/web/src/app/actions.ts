@@ -15,6 +15,7 @@ import { ATTRIBUTION_COOKIE, parseAttribution } from "@/lib/attribution";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";
 import { clientIp } from "@/lib/request";
 import { protectEmail } from "@/lib/server-crypto";
+import { sendContinueReportLink } from "@/server/accounts";
 
 export type FormState =
   | { status: "idle" }
@@ -45,15 +46,15 @@ async function attribution() {
   return parseAttribution((await cookies()).get(ATTRIBUTION_COOKIE)?.value);
 }
 
-async function saveLead(source: LeadSource, address: string, extra: { scamType?: string; lossBand?: string; marketingConsent?: boolean }) {
+async function saveLead(source: LeadSource, address: string, extra: { scamType?: string; lossBand?: string; marketingConsent?: boolean }): Promise<string> {
   const { emailHash, emailEnc } = protectEmail(address, "lead.email");
   const recent = await prisma.lead.findFirst({
     where: { emailHash, source, createdAt: { gt: new Date(Date.now() - DAY) } },
     select: { id: true },
   });
-  if (recent) return; // same person, same form, within a day: don't duplicate
+  if (recent) return recent.id; // same person, same form, within a day: don't duplicate
   const attr = await attribution();
-  await prisma.lead.create({
+  const lead = await prisma.lead.create({
     data: {
       source,
       emailHash,
@@ -70,7 +71,9 @@ async function saveLead(source: LeadSource, address: string, extra: { scamType?:
       gclid: attr.gclid,
       fbclid: attr.fbclid,
     },
+    select: { id: true },
   });
+  return lead.id;
 }
 
 const startSchema = z.object({
@@ -84,7 +87,7 @@ const startSchema = z.object({
 export async function startReport(_prev: FormState, form: FormData): Promise<FormState> {
   const success: FormState = {
     status: "success",
-    message: "Thank you. We'll email you a secure link to finish your report. It takes about 5 minutes.",
+    message: "Check your inbox: we've sent you a secure link to finish your report. It takes about 5 minutes.",
   };
   if (isBot(form)) return success;
   if (!leadLimiter.check(`lead:${await clientIp()}`).allowed) return { status: "error", message: SLOW_DOWN };
@@ -103,8 +106,8 @@ export async function startReport(_prev: FormState, form: FormData): Promise<For
     return { status: "error", message: "Please agree to the research use of your report to continue.", field: "consent" };
   }
   try {
-    await saveLead(parsed.data.source, parsed.data.email, { scamType: parsed.data.scamType, lossBand: parsed.data.lossBand });
-    // Phase 3: send the "continue your report" email with a one-time link.
+    const leadId = await saveLead(parsed.data.source, parsed.data.email, { scamType: parsed.data.scamType, lossBand: parsed.data.lossBand });
+    await sendContinueReportLink(parsed.data.email, leadId);
     return success;
   } catch (error) {
     console.error("startReport failed", error instanceof Error ? error.message : error);

@@ -36,6 +36,7 @@ export function SiteHeader() {
         </nav>
       </div>
       <div className="pill pill-side">
+        <Link href="/login" style={{ fontSize: 15, fontWeight: 500, color: "var(--navy-900)" }}>Log in</Link>
         <Link href="/#report" className="btn btn-line">
           Share your report
         </Link>

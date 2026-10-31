@@ -14,4 +14,6 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-export * from "@prisma/client";
+// Runtime values are listed explicitly (Prisma is CommonJS); everything else is type-only.
+export { Prisma, PrismaClient } from "@prisma/client";
+export type * from "@prisma/client";
