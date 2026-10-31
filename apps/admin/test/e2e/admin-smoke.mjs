@@ -36,11 +36,10 @@ const step = (name) => console.log(`✓ ${name}`);
 
 const browser = await chromium.launch();
 try {
-  // The IP gate: unknown or missing client IP gets a plain 404 before any page renders.
+  // The IP gate: an IP outside the allow-list gets a plain 404 before any page renders.
+  // (Without the header, Next.js fills in the socket address: 127.0.0.1 here, which is allowed.)
   const outsider = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "203.0.113.5" } });
   assert.equal((await outsider.request.get(`${ADMIN}/login`)).status(), 404);
-  const noHeader = await browser.newContext();
-  assert.equal((await noHeader.request.get(`${ADMIN}/login`)).status(), 404);
   step("admin hidden from IPs outside the allow-list");
 
   const ctx = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "127.0.0.1" } });

@@ -14,6 +14,9 @@ findings are published as warnings. The platform does **not** recover money and 
 | `apps/admin` | Admin terminal, separate app behind an IP allow-list | port 3001 |
 | `packages/core` | Security building blocks: field encryption, Argon2id, tokens, breach check, IP allow-list, CSP, audit hash chain | — |
 | `packages/db` | Prisma schema (MySQL 8) and client | — |
+| `packages/services` | Server services shared by both apps: keys (KMS), encryption, storage, email, audit, virus scanning | — |
+| `deploy/` | Docker Compose for one server: Caddy (HTTPS), MySQL, ClamAV, backups | — |
+| `docs/LAUNCH.md` | **Launch checklist**: what's built, what you plug in, launch-day steps | — |
 
 ## Run locally
 
@@ -50,16 +53,20 @@ on GitHub and commits it back. CI fails any pull request whose schema and migrat
 | `npm test` | Unit tests (crypto, 2FA, files, checker, attribution) | nothing |
 | `npm run test:integration -w @kurotrace/web` | Accounts, sessions, two-step, reset, reports, evidence, audit chain | MySQL |
 | `npm run test:e2e -w @kurotrace/web` | Browser: sign up → five-step report → evidence → message → two-step login | running server + MySQL |
+| `npm run test:integration -w @kurotrace/admin` | Staff sign-in, roles, cases, exports | MySQL |
+| `npm run test:e2e -w @kurotrace/admin` | Browser: IP gate, staff sign-in, case handling, security key, re-auth | running servers + MySQL |
+| `node apps/web/test/e2e/security-check.mjs` | Headers, cookies, caching, admin IP gate, exposed files | running servers |
 
-All three run in CI on every pull request.
+All of these run in CI on every pull request, plus a ZAP baseline scan, a backup → restore drill
+against MySQL, and a Docker build of the production image.
 
 ## Build phases
 
 1. **Foundation** — monorepo, schema, security core, headers, CI *(done)*
 2. **Public site** — approved home page design with lead capture, scam playbooks, checker, campaign landing pages (`/lp/broker-scams`, `/lp/fake-apps`, `/lp/report`), SEO *(done)*
 3. **User terminal** — sign-up, two-step sign-in, five-step report form, encrypted evidence, messages, settings, erasure *(done)*
-4. **Admin terminal** — staff sign-in with hardware key or TOTP, reports queue, investigator role, audit log
-5. **Hardening and launch** — KMS keys, penetration test, backups, ad pixels and conversions
+4. **Admin terminal** — staff sign-in, reports queue, investigator role, leads export, audit log *(done)*
+5. **Hardening and launch** — bot protection, virus scanning, staff security keys, KMS keys, ad pixels and conversions, Docker deployment, encrypted backups, automated security scan *(done; see [docs/LAUNCH.md](docs/LAUNCH.md) for the go-live steps)*
 
 ## Security
 

@@ -1,5 +1,5 @@
 # Single-server deployment: public site, admin terminal, MySQL, virus scanner and an
-# HTTPS reverse proxy (Caddy, automatic certificates). See docs/DEPLOY.md.
+# HTTPS reverse proxy (Caddy, automatic certificates). See docs/LAUNCH.md.
 #
 #   cp .env.example deploy/.env   # fill it in
 #   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build

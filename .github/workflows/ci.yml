@@ -180,6 +180,24 @@ jobs:
           OWNER_PASSWORD: e2e owner passphrase long
           OWNER_TOTP_SECRET: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
         run: npm run test:e2e -w @kurotrace/admin
+      - name: Security checks (headers, cookies, caching, admin IP gate)
+        env:
+          WEB_URL: http://localhost:3000
+          ADMIN_URL: http://localhost:3001
+        run: node apps/web/test/e2e/security-check.mjs
+      - name: OWASP ZAP baseline scan (passive)
+        run: |
+          mkdir -p zap && chmod 777 zap
+          docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://localhost:3000 -I -r zap-report.html -J zap-report.json -m 3
+          node -e "const r=require('./zap/zap-report.json');const a=r.site.flatMap(s=>s.alerts).filter(a=>Number(a.riskcode)>=3);if(a.length){console.error('High-risk findings:',a.map(x=>x.name));process.exit(1)}console.log('No high-risk findings')"
+      - name: Keep the ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap/
+          if-no-files-found: ignore
       - name: Server logs on failure
         if: failure()
         run: |
