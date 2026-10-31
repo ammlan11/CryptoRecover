@@ -1,0 +1,57 @@
+name: Generate migration (on request)
+
+# Creates a Prisma migration on GitHub for people without a local MySQL.
+# To use it on a feature branch:
+#   echo "describe_the_change" > packages/db/prisma/migrate.request
+#   git add packages/db/prisma/migrate.request && git commit -m "Request migration" && git push
+# The job diffs the schema against existing migrations, commits the new migration folder
+# to the same branch, and deletes the request file. Pull afterwards.
+
+on:
+  push:
+    branches-ignore: [main]
+    paths: [packages/db/prisma/migrate.request]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: app
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/app
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Read migration name
+        id: req
+        run: |
+          name=$(tr -cd 'a-z0-9_' < packages/db/prisma/migrate.request | head -c 60)
+          echo "name=${name:-change}" >> "$GITHUB_OUTPUT"
+      - name: Create migration from schema
+        working-directory: packages/db
+        run: npx prisma migrate dev --create-only --skip-generate --name "${{ steps.req.outputs.name }}"
+      - name: Commit migration back to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -q packages/db/prisma/migrate.request
+          git add packages/db/prisma/migrations
+          git commit -m "Add migration: ${{ steps.req.outputs.name }}"
+          git push
