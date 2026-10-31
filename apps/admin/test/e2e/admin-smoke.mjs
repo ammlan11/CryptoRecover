@@ -36,11 +36,10 @@ const step = (name) => console.log(`✓ ${name}`);
 
 const browser = await chromium.launch();
 try {
-  // The IP gate: unknown or missing client IP gets a plain 404 before any page renders.
+  // The IP gate: an IP outside the allow-list gets a plain 404 before any page renders.
+  // (Without the header, Next.js fills in the socket address: 127.0.0.1 here, which is allowed.)
   const outsider = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "203.0.113.5" } });
   assert.equal((await outsider.request.get(`${ADMIN}/login`)).status(), 404);
-  const noHeader = await browser.newContext();
-  assert.equal((await noHeader.request.get(`${ADMIN}/login`)).status(), 404);
   step("admin hidden from IPs outside the allow-list");
 
   const ctx = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "127.0.0.1" } });
@@ -123,6 +122,34 @@ try {
   await page.click("button:has-text('Confirm')");
   await page.waitForURL(`${ADMIN}/staff`);
   step("re-authentication with password + new code");
+
+  // Security key: Chrome's virtual authenticator stands in for a YubiKey / passkey.
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", {
+    options: { protocol: "ctap2", transport: "usb", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true },
+  });
+  await page.goto(`${ADMIN}/account`);
+  await page.fill("#key-label", "CI key");
+  await page.click("button:has-text('Add security key')");
+  await page.getByText("Security key added").waitFor();
+  await page.getByText("CI key").waitFor();
+  step("security key registered");
+
+  await page.click("button:has-text('Sign out')");
+  await page.waitForURL(`${ADMIN}/login`);
+  await page.fill("#username", "owner");
+  await page.fill("#password", "not the password at all");
+  await page.click("button:has-text('Use a security key or passkey instead')");
+  await page.getByText("Those details are not correct.").waitFor();
+  step("a valid key with the wrong password is refused");
+
+  await page.fill("#username", "owner");
+  await page.fill("#password", PASSWORD);
+  await page.click("button:has-text('Use a security key or passkey instead')");
+  await page.waitForURL(`${ADMIN}/`);
+  await page.getByRole("heading", { name: "Dashboard" }).waitFor();
+  step("signed in with password + security key (no code)");
 
   await page.click("button:has-text('Sign out')");
   await page.waitForURL(`${ADMIN}/login`);

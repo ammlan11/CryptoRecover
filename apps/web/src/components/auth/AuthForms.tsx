@@ -11,6 +11,7 @@ import {
   twoStepAction,
   type AuthState,
 } from "@/app/(auth)/actions";
+import { BotCheck } from "@/components/forms/BotCheck";
 
 const idle: AuthState = { status: "idle" };
 
@@ -46,6 +47,7 @@ export function LoginForm({ next }: { next?: string }) {
         <label className="label" htmlFor="password">Password</label>
         <input id="password" name="password" type="password" autoComplete="current-password" required className="field" />
       </div>
+      <BotCheck action="login" resetOn={state} />
       <Message state={state} />
       <Submit pending={pending}>Log in</Submit>
       <p className="fine" style={{ textAlign: "center" }}>
@@ -73,6 +75,7 @@ export function SignupForm() {
         <input type="checkbox" name="terms" required />
         <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>
       </label>
+      <BotCheck action="signup" resetOn={state} />
       <Message state={state} />
       <Submit pending={pending}>Create account</Submit>
       <p className="fine" style={{ textAlign: "center" }}>Already have an account? <Link href="/login">Log in</Link></p>
@@ -105,6 +108,7 @@ export function ForgotForm() {
         <label className="label" htmlFor="email">Email</label>
         <input id="email" name="email" type="email" autoComplete="email" required className="field" />
       </div>
+      <BotCheck action="forgot" resetOn={state} />
       <Message state={state} />
       <Submit pending={pending}>Send reset link</Submit>
       <p className="fine" style={{ textAlign: "center" }}><Link href="/login">Back to log in</Link></p>

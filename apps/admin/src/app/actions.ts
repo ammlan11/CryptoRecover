@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { RateLimiter } from "@demo/core/rate-limit";
+import { RateLimiter } from "@kurotrace/core/rate-limit";
 import { Forbidden } from "@/lib/permissions";
 import { endCurrentStaffSession, requireRecentAuth, requireStaff, staffIp, startStaffSession } from "@/lib/session";
 import {
@@ -29,6 +29,16 @@ import {
   staffLogin,
   updateStaffAccess,
 } from "@/server/staff-auth";
+import {
+  assertionOptions,
+  finishRegistration,
+  KeyError,
+  parseCredentialJson,
+  registrationOptions,
+  removeKey,
+} from "@/server/security-keys";
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
+import { recentlyReauthenticated } from "@/server/staff-auth";
 
 export type State = { status: "idle" } | { status: "error"; message: string } | { status: "success"; message: string; secret?: string; link?: string };
 
@@ -44,7 +54,7 @@ async function run(fn: () => Promise<void | State>, success?: string): Promise<S
     if (result) return result;
     return success ? { status: "success", message: success } : { status: "idle" };
   } catch (error) {
-    if (error instanceof CaseError || error instanceof Forbidden) return { status: "error", message: error.message };
+    if (error instanceof CaseError || error instanceof Forbidden || error instanceof KeyError) return { status: "error", message: error.message };
     if (error instanceof Error && /^(Usernames|That username|You can't|Reset your own|Unsupported|Invalid CIDR)/.test(error.message)) return { status: "error", message: error.message };
     console.error("admin action failed", error instanceof Error ? error.message : error);
     return { status: "error", message: "Something went wrong. Please try again." };
@@ -60,10 +70,71 @@ const refresh = (publicRef: string) => revalidatePath(`/reports/${publicRef}`);
 
 // ─── Sign-in ─────────────────────────────────────────────────────
 
+/** A signed security-key response if the form carries one, otherwise the typed code. */
+function secondFactor(form: FormData) {
+  const key = parseCredentialJson<AuthenticationResponseJSON>(str(form, "webauthn", 20_000));
+  return key ? { key } : { code: str(form, "code", 10) };
+}
+
+export type KeyOptions = { ok: true; options: unknown } | { ok: false; message: string };
+
+/** Challenge for signing in (no username needed) or confirming it's you. */
+export async function keyChallengeAction(purpose: "login" | "reauth"): Promise<KeyOptions> {
+  const ip = await staffIp();
+  if (!loginLimiter.check(`key:${ip}`).allowed) return { ok: false, message: "Too many attempts. Wait 15 minutes." };
+  try {
+    if (purpose === "reauth") {
+      const { staff } = await requireStaff();
+      return { ok: true, options: await assertionOptions("reauth", staff.id) };
+    }
+    return { ok: true, options: await assertionOptions("login", null) };
+  } catch (error) {
+    if (error instanceof KeyError) return { ok: false, message: error.message };
+    console.error("key challenge failed", error instanceof Error ? error.message : error);
+    return { ok: false, message: "Security keys aren't available right now." };
+  }
+}
+
+/** Adding or removing a key is a security change: it needs a recent password + second step. */
+async function requireFreshForKeys() {
+  const ctx = await requireStaff();
+  if (!recentlyReauthenticated(ctx.session)) throw new KeyError("For your security, confirm it's you first.");
+  return ctx;
+}
+
+export async function keyRegistrationOptionsAction(): Promise<KeyOptions> {
+  try {
+    const { staff } = await requireFreshForKeys();
+    return { ok: true, options: await registrationOptions(staff) };
+  } catch (error) {
+    if (error instanceof KeyError) return { ok: false, message: error.message };
+    console.error("key registration options failed", error instanceof Error ? error.message : error);
+    return { ok: false, message: "Something went wrong. Please try again." };
+  }
+}
+
+export async function registerKeyAction(label: string, responseJson: string): Promise<State> {
+  return run(async () => {
+    const { staff, ip } = await requireFreshForKeys();
+    const response = parseCredentialJson<RegistrationResponseJSON>(responseJson);
+    if (!response) throw new KeyError("The key's response couldn't be read. Please try again.");
+    await finishRegistration(staff, ip, String(label).slice(0, 64), response);
+    revalidatePath("/account");
+  }, "Security key added. You can now use it to sign in.");
+}
+
+export async function removeKeyAction(_prev: State, form: FormData): Promise<State> {
+  return run(async () => {
+    const { staff, ip } = await requireFreshForKeys();
+    await removeKey(staff, ip, str(form, "keyId", 40));
+    revalidatePath("/account");
+  }, "Key removed.");
+}
+
 export async function loginAction(_prev: State, form: FormData): Promise<State> {
   const ip = await staffIp();
   if (!loginLimiter.check(`login:${ip}`).allowed) return { status: "error", message: "Too many attempts. Wait 15 minutes." };
-  const result = await staffLogin(str(form, "username", 64), str(form, "password", 256), str(form, "code", 10), ip);
+  const result = await staffLogin(str(form, "username", 64), str(form, "password", 256), secondFactor(form), ip);
   if (!result.ok) {
     return { status: "error", message: result.reason === "locked" ? "This account is locked for 30 minutes after too many failed attempts." : "Those details are not correct." };
   }
@@ -88,7 +159,7 @@ export async function setupAction(_prev: State, form: FormData): Promise<State> 
 export async function reauthAction(_prev: State, form: FormData): Promise<State> {
   const { session, staff, ip } = await requireStaff();
   if (!loginLimiter.check(`reauth:${staff.id}`).allowed) return { status: "error", message: "Too many attempts. Wait 15 minutes." };
-  const ok = await reauthenticate(session.id, staff.id, str(form, "password", 256), str(form, "code", 10), ip);
+  const ok = await reauthenticate(session.id, staff.id, str(form, "password", 256), secondFactor(form), ip);
   if (!ok) return { status: "error", message: "Those details are not correct." };
   const next = str(form, "next", 200);
   redirect(/^\/[A-Za-z0-9/_?=&-]*$/.test(next) ? next : "/");

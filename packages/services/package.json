@@ -1,5 +1,5 @@
 {
-  "name": "@demo/services",
+  "name": "@kurotrace/services",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,19 +10,24 @@
     "./storage": "./src/storage.ts",
     "./email": "./src/email.ts",
     "./audit": "./src/audit.ts",
-    "./site": "./src/site.ts"
+    "./site": "./src/site.ts",
+    "./malware": "./src/malware.ts",
+    "./keys": "./src/keys.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3",
-    "@demo/core": "*",
-    "@demo/db": "*",
-    "server-only": "^0.0.1"
+    "@kurotrace/core": "*",
+    "@kurotrace/db": "*",
+    "server-only": "^0.0.1",
+    "@aws-sdk/client-kms": "^3"
   },
   "devDependencies": {
     "@types/node": "^22",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

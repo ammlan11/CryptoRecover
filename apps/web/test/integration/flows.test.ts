@@ -1,15 +1,15 @@
 /**
  * End-to-end server flows against a real MySQL database (CI "integration" job).
  * Run locally with a disposable database:
- *   DATABASE_URL=mysql://root:root@127.0.0.1:3306/demo_test npm run test:integration -w @demo/web
+ *   DATABASE_URL=mysql://root:root@127.0.0.1:3306/demo_test npm run test:integration -w @kurotrace/web
  */
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { verifyAuditChain, type AuditRow } from "@demo/core/audit";
-import { totpAt } from "@demo/core/totp";
-import { prisma } from "@demo/db";
+import { verifyAuditChain, type AuditRow } from "@kurotrace/core/audit";
+import { totpAt } from "@kurotrace/core/totp";
+import { prisma } from "@kurotrace/db";
 
 process.env.EMAIL_PROVIDER = "memory";
 process.env.EVIDENCE_STORAGE = "local";
@@ -19,12 +19,12 @@ process.env.EVIDENCE_LOCAL_DIR = mkdtempSync(path.join(tmpdir(), "evidence-"));
 let breachedSuffixes = "";
 vi.stubGlobal("fetch", async () => ({ ok: true, text: async () => breachedSuffixes }));
 
-const { outbox } = await import("@demo/services/email");
+const { outbox } = await import("@kurotrace/services/email");
 const accounts = await import("@/server/accounts");
 const sessions = await import("@/server/sessions");
 const reports = await import("@/server/reports");
-const { storage } = await import("@demo/services/storage");
-const { protectEmail } = await import("@demo/services/crypto");
+const { storage } = await import("@kurotrace/services/storage");
+const { protectEmail } = await import("@kurotrace/services/crypto");
 
 const PASSWORD = "correct horse battery staple";
 const linkToken = (text: string) => /token=([A-Za-z0-9_-]+)/.exec(text)?.[1] ?? "";
@@ -69,7 +69,7 @@ describe("accounts", () => {
     expect(user.passwordHash.startsWith("$argon2id$")).toBe(true);
 
     expect(await accounts.registerUser("ana@example.com", PASSWORD)).toEqual({ ok: true });
-    expect(outbox.at(-1)!.subject).toBe("You already have a Demo account");
+    expect(outbox.at(-1)!.subject).toBe("You already have a Kuro Trace account");
     expect(await prisma.user.count()).toBe(1);
   });
 
@@ -254,5 +254,18 @@ describe("audit log", () => {
       hash: r.hash,
     }));
     expect(verifyAuditChain(chain)).toBe(-1);
+  });
+});
+
+describe.skipIf(!process.env.CLAMAV_HOST)("malware scanning (live ClamAV)", () => {
+  it("flags the EICAR test file and marks a scanned upload as clean", async () => {
+    const { scanEvidence } = await import("@kurotrace/services/malware");
+    const { EICAR } = await import("@kurotrace/core/malware");
+    expect((await scanEvidence(Buffer.from(EICAR))).status).toBe("INFECTED");
+    expect(await scanEvidence(PNG)).toEqual({ status: "CLEAN" });
+    const user = await verifiedUser("scan@example.com");
+    const draft = await reports.createDraft(user.id, "UNSURE");
+    await reports.addEvidence(user.id, draft.publicRef, [new File([PNG], "clean.png")]);
+    expect((await prisma.evidence.findFirstOrThrow({ where: { reportId: draft.id } })).scanStatus).toBe("CLEAN");
   });
 });

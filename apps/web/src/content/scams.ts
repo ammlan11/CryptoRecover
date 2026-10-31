@@ -128,7 +128,7 @@ export const SCAMS: ScamPlaybook[] = [
       "Pressure to act before your funds are \"moved again\"",
     ],
     faq: [
-      { q: "Does Demo recover money?", a: "No. Demo is a research project. We study scams to warn others, and we never charge or offer recovery." },
+      { q: "Does Kuro Trace recover money?", a: "No. Kuro Trace is a research project. We study scams to warn others, and we never charge or offer recovery." },
       { q: "Can anyone trace stolen crypto?", a: "Blockchain analysis can show where funds moved, but that does not mean anyone can return them. Report to your police and to the exchange the funds reached." },
     ],
   },

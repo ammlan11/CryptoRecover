@@ -74,10 +74,10 @@ export function verifyTotp(secret: string, code: string, nowMs = Date.now(), las
   return null;
 }
 
-export function totpUri(secret: string, account: string, issuer = "Demo"): string {
+export function totpUri(secret: string, account: string, issuer = "Kuro Trace"): string {
   const label = encodeURIComponent(`${issuer}:${account}`);
   const params = new URLSearchParams({ secret, issuer, algorithm: "SHA1", digits: String(DIGITS), period: String(STEP_SECONDS) });
-  return `otpauth://totp/${label}?${params.toString()}`;
+  return `otpauth://totp/${label}?${params.toString().replace(/\+/g, "%20")}`;
 }
 
 /** Ten single-use codes like "7KQ2-M9XD", shown once; store only their hashes. */

@@ -30,8 +30,8 @@ jobs:
       - run: npm test
       - name: Dependency audit (fail on high or critical)
         run: npm audit --audit-level=high --omit=dev
-      - run: npm run build -w @demo/web
-      - run: npm run build -w @demo/admin
+      - run: npm run build -w @kurotrace/web
+      - run: npm run build -w @kurotrace/admin
 
   integration:
     runs-on: ubuntu-latest
@@ -45,11 +45,16 @@ jobs:
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
           --health-interval=5s --health-timeout=5s --health-retries=20
+      clamav:
+        image: clamav/clamav:stable
+        ports: ["3310:3310"]
     env:
       DATABASE_URL: mysql://root:root@127.0.0.1:3306/demo_test
       FIELD_ENCRYPTION_KEYS: k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       BLIND_INDEX_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      CLAMAV_HOST: 127.0.0.1
+      CLAMAV_PORT: "3310"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -59,19 +64,56 @@ jobs:
       - run: npm ci
       - run: npm run db:generate
       - name: Apply migrations to a fresh database
-        run: npx -w @demo/db prisma migrate deploy
+        run: npx -w @kurotrace/db prisma migrate deploy
       - name: Fail if the schema has changes without a migration
         run: |
           mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE shadow"
-          npx -w @demo/db prisma migrate diff \
+          npx -w @kurotrace/db prisma migrate diff \
             --from-migrations prisma/migrations \
             --to-schema-datamodel prisma/schema.prisma \
             --shadow-database-url mysql://root:root@127.0.0.1:3306/shadow \
             --exit-code
+      - name: Wait for the virus scanner (loads its signatures on start)
+        run: |
+          python3 - <<'PY'
+          import socket, sys, time
+          for _ in range(72):
+              try:
+                  with socket.create_connection(("127.0.0.1", 3310), timeout=5) as c:
+                      c.sendall(b"zPING\0")
+                      if c.recv(16).startswith(b"PONG"):
+                          print("ClamAV ready"); sys.exit(0)
+              except OSError:
+                  pass
+              time.sleep(5)
+          sys.exit("ClamAV did not start within 6 minutes")
+          PY
       - name: Integration tests (accounts, reports, evidence, audit chain)
-        run: npm run test:integration -w @demo/web
+        run: npm run test:integration -w @kurotrace/web
       - name: Integration tests (admin — staff sign-in, roles, cases, exports)
-        run: npm run test:integration -w @demo/admin
+        run: npm run test:integration -w @kurotrace/admin
+      - name: Backup and restore drill (encrypted dump → restore → compare)
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: demo_test
+          BACKUP_DIR: /tmp/backups
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq age > /dev/null
+          age-keygen -o /tmp/backup.key 2> /dev/null
+          export BACKUP_AGE_RECIPIENT="$(age-keygen -y /tmp/backup.key)"
+          deploy/backup.sh
+          f=$(ls /tmp/backups/*.sql.gz.age)
+          if gunzip -t < "$f" 2> /dev/null; then echo "backup is not encrypted"; exit 1; fi
+          AGE_IDENTITY=/tmp/backup.key deploy/restore.sh "$f" restore_check
+          q() { MYSQL_PWD=root mysql -h 127.0.0.1 -u root -N -e "$1"; }
+          for t in User Report Evidence Message Lead Staff AuditLog; do
+            a=$(q "SELECT COUNT(*) FROM demo_test.$t"); b=$(q "SELECT COUNT(*) FROM restore_check.$t")
+            echo "$t: $a / $b"; [ "$a" = "$b" ] || exit 1
+          done
+          a=$(q "SELECT MD5(GROUP_CONCAT(hash ORDER BY id)) FROM demo_test.AuditLog")
+          b=$(q "SELECT MD5(GROUP_CONCAT(hash ORDER BY id)) FROM restore_check.AuditLog")
+          [ "$a" = "$b" ] && echo "audit chain identical after restore"
 
   e2e:
     runs-on: ubuntu-latest
@@ -95,6 +137,9 @@ jobs:
       ALLOW_LOCAL_EVIDENCE: "true"
       EVIDENCE_LOCAL_DIR: /tmp/evidence
       NEXT_TELEMETRY_DISABLED: "1"
+      # Cloudflare's published always-pass test keys: exercises the real bot-check flow.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+      TURNSTILE_SECRET_KEY: 1x0000000000000000000000000000000AA
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -103,39 +148,88 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run db:generate
-      - run: npx -w @demo/db prisma migrate deploy
-      - run: npm run build -w @demo/web
-      - run: npm run build -w @demo/admin
+      - run: npx -w @kurotrace/db prisma migrate deploy
+      - run: npm run build -w @kurotrace/web
+      - run: npm run build -w @kurotrace/admin
       - name: Create the owner account
         env:
           OWNER_PASSWORD: e2e owner passphrase long
           ALLOW_FIXED_TOTP: "true"
           OWNER_TOTP_SECRET: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
-        run: npm run create-owner -w @demo/admin -- --username owner
+        run: npm run create-owner -w @kurotrace/admin -- --username owner
       - name: Start the production servers
         env:
           ADMIN_ALLOWED_IPS: 127.0.0.1
           TRUSTED_IP_HEADER: x-forwarded-for
+          ADMIN_URL: http://localhost:3001
         run: |
           (cd apps/web && npx next start -p 3000 > /tmp/web.log 2>&1 &)
           (cd apps/admin && npx next start -p 3001 > /tmp/admin.log 2>&1 &)
           for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:3000/login && break; sleep 1; done
           for i in $(seq 1 60); do curl -sf -o /dev/null -H "x-forwarded-for: 127.0.0.1" http://localhost:3001/login && break; sleep 1; done
-      - run: npx -w @demo/web playwright install --with-deps chromium
+      - run: npx -w @kurotrace/web playwright install --with-deps chromium
       - name: Browser end-to-end test
         env:
           BASE_URL: http://localhost:3000
           MYSQL: mysql -h127.0.0.1 -uroot -proot demo_e2e
-        run: npm run test:e2e -w @demo/web
+        run: npm run test:e2e -w @kurotrace/web
       - name: Admin browser end-to-end test
         env:
           ADMIN_URL: http://localhost:3001
           WEB_URL: http://localhost:3000
           OWNER_PASSWORD: e2e owner passphrase long
           OWNER_TOTP_SECRET: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
-        run: npm run test:e2e -w @demo/admin
+        run: npm run test:e2e -w @kurotrace/admin
+      - name: Security checks (headers, cookies, caching, admin IP gate)
+        env:
+          WEB_URL: http://localhost:3000
+          ADMIN_URL: http://localhost:3001
+        run: node apps/web/test/e2e/security-check.mjs
+      - name: OWASP ZAP baseline scan (passive)
+        run: |
+          mkdir -p zap && chmod 777 zap
+          docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://localhost:3000 -I -r zap-report.html -J zap-report.json -m 3
+          node -e "const r=require('./zap/zap-report.json');const a=r.site.flatMap(s=>s.alerts).filter(a=>Number(a.riskcode)>=3);if(a.length){console.error('High-risk findings:',a.map(x=>x.name));process.exit(1)}console.log('No high-risk findings')"
+      - name: Keep the ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap/
+          if-no-files-found: ignore
       - name: Server logs on failure
         if: failure()
         run: |
           tail -80 /tmp/web.log
           tail -80 /tmp/admin.log
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the app image
+        run: docker build -t kurotrace:ci --build-arg NEXT_PUBLIC_SITE_URL=https://example.com .
+      - name: Run it read-only, as in production
+        run: |
+          docker run -d --name web -p 3000:3000 --read-only --tmpfs /tmp --tmpfs /app/apps/web/.next/cache \
+            --cap-drop ALL --security-opt no-new-privileges:true -w /app/apps/web -e HOME=/tmp \
+            -e DATABASE_URL=mysql://x:x@127.0.0.1:1/x -e KEYS_SOURCE=env \
+            -e FIELD_ENCRYPTION_KEYS=k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            -e BLIND_INDEX_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            kurotrace:ci node /app/node_modules/next/dist/bin/next start -p 3000
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000/robots.txt && break; sleep 1; done
+          curl -sfI http://localhost:3000/robots.txt | grep -i "strict-transport-security"
+          docker exec web id -u | grep -vx 0
+          docker logs web | tail -5
+      - name: Build the backup image
+        run: docker build -t kurotrace-backup:ci -f deploy/backup.Dockerfile deploy
+      - name: Check the compose file
+        env:
+          NEXT_PUBLIC_SITE_URL: https://example.com
+          MYSQL_APP_PASSWORD: x
+          MYSQL_ROOT_PASSWORD: x
+          BACKUP_AGE_RECIPIENT: age1example
+          SITE_DOMAIN: example.com
+          ADMIN_DOMAIN: admin.example.com
+        run: touch deploy/.env && docker compose -f deploy/docker-compose.yml config -q

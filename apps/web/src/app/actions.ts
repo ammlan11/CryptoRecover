@@ -8,18 +8,20 @@
  */
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { normalizeIndicator } from "@demo/core/indicators";
-import { RateLimiter } from "@demo/core/rate-limit";
-import { prisma, type IndicatorKind, type LeadSource } from "@demo/db";
+import { normalizeIndicator } from "@kurotrace/core/indicators";
+import { RateLimiter } from "@kurotrace/core/rate-limit";
+import { prisma, type IndicatorKind, type LeadSource } from "@kurotrace/db";
 import { ATTRIBUTION_COOKIE, parseAttribution } from "@/lib/attribution";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";
 import { clientIp } from "@/lib/request";
-import { protectEmail } from "@demo/services/crypto";
+import { BOT_CHECK_FAILED, passesBotCheck } from "@/lib/bot-check";
+import { sendLeadConversion } from "@/server/conversions";
+import { protectEmail } from "@kurotrace/services/crypto";
 import { sendContinueReportLink } from "@/server/accounts";
 
 export type FormState =
   | { status: "idle" }
-  | { status: "success"; message: string }
+  | { status: "success"; message: string; eventId?: string }
   | { status: "error"; message: string; field?: string };
 
 export type CheckState =
@@ -91,6 +93,7 @@ export async function startReport(_prev: FormState, form: FormData): Promise<For
   };
   if (isBot(form)) return success;
   if (!leadLimiter.check(`lead:${await clientIp()}`).allowed) return { status: "error", message: SLOW_DOWN };
+  if (!(await passesBotCheck(form, "lead"))) return { status: "error", message: BOT_CHECK_FAILED };
 
   const parsed = startSchema.safeParse({
     source: form.get("source"),
@@ -108,7 +111,11 @@ export async function startReport(_prev: FormState, form: FormData): Promise<For
   try {
     const leadId = await saveLead(parsed.data.source, parsed.data.email, { scamType: parsed.data.scamType, lossBand: parsed.data.lossBand });
     await sendContinueReportLink(parsed.data.email, leadId);
-    return success;
+    // Same id for the browser pixel and the server-side event, so the lead is counted once.
+    const eventId = `lead-${leadId}`;
+    const attr = await attribution();
+    await sendLeadConversion({ eventId, email: parsed.data.email, fbclid: attr.fbclid, landing: attr.landing });
+    return { ...success, eventId };
   } catch (error) {
     console.error("startReport failed", error instanceof Error ? error.message : error);
     return { status: "error", message: GENERIC_ERROR };
@@ -151,6 +158,7 @@ export async function watchIndicator(_prev: FormState, form: FormData): Promise<
   const success: FormState = { status: "success", message: "Done. We'll email you if it's reported again." };
   if (isBot(form)) return success;
   if (!leadLimiter.check(`lead:${await clientIp()}`).allowed) return { status: "error", message: SLOW_DOWN };
+  if (!(await passesBotCheck(form, "watch"))) return { status: "error", message: BOT_CHECK_FAILED };
   const parsed = watchSchema.safeParse({ email: form.get("email"), kind: form.get("kind"), value: form.get("value") });
   if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Please check the form" };
   // Re-normalise server-side; never trust the hidden fields as sent.
@@ -180,6 +188,7 @@ export async function subscribeNewsletter(_prev: FormState, form: FormData): Pro
   const success: FormState = { status: "success", message: "You're on the list. The next scam alert arrives this week." };
   if (isBot(form)) return success;
   if (!leadLimiter.check(`lead:${await clientIp()}`).allowed) return { status: "error", message: SLOW_DOWN };
+  if (!(await passesBotCheck(form, "newsletter"))) return { status: "error", message: BOT_CHECK_FAILED };
   const parsed = email.safeParse(form.get("email"));
   if (!parsed.success) return { status: "error", message: "Enter a valid email address" };
   try {

@@ -1,4 +1,4 @@
-import type { StaffRole } from "@demo/db";
+import type { StaffRole } from "@kurotrace/db";
 
 /**
  * What each role may do. Investigators (the external firm) only ever see reports

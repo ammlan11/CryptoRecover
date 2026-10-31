@@ -1,5 +1,5 @@
 {
-  "name": "@demo/core",
+  "name": "@kurotrace/core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,9 @@
     "./indicators": "./src/indicators.ts",
     "./rate-limit": "./src/rate-limit.ts",
     "./totp": "./src/totp.ts",
-    "./files": "./src/files.ts"
+    "./files": "./src/files.ts",
+    "./turnstile": "./src/turnstile.ts",
+    "./malware": "./src/malware.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

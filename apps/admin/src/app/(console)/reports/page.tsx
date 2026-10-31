@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma, type ReportStatus, type ScamType } from "@demo/db";
+import { prisma, type ReportStatus, type ScamType } from "@kurotrace/db";
 import { can } from "@/lib/permissions";
 import { fmtDay, LOSS, Pill, SCAM, STATUS } from "@/lib/labels";
 import { requireStaff } from "@/lib/session";

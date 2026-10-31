@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { buildCsp, generateNonce, securityHeaders } from "@demo/core/headers";
-import { clientIpFromHeaders, isIpAllowed, parseAllowList } from "@demo/core/ip";
+import { buildCsp, generateNonce, securityHeaders } from "@kurotrace/core/headers";
+import { clientIpFromHeaders, isIpAllowed, parseAllowList } from "@kurotrace/core/ip";
 
 /**
  * Gatekeeper for the admin terminal. Runs before every request, including static

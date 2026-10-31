@@ -1,6 +1,7 @@
 "use client";
 
 import { Form } from "./Form";
+import { KeySignInButton } from "./SecurityKeys";
 import { loginAction, reauthAction, setupAction } from "@/app/actions";
 
 export function LoginForm() {
@@ -10,6 +11,8 @@ export function LoginForm() {
       <div><label className="label" htmlFor="password">Password</label><input id="password" name="password" type="password" autoComplete="current-password" required className="field" /></div>
       <div><label className="label" htmlFor="code">Authenticator code</label><input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={7} className="field" style={{ fontFamily: "var(--font-mono)", letterSpacing: ".2em", fontSize: 18 }} /></div>
       <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>Sign in</button>
+      <div className="or"><span>or</span></div>
+      <KeySignInButton purpose="login" />
     </Form>
   );
 }
@@ -26,13 +29,14 @@ export function SetupForm({ token }: { token: string }) {
   );
 }
 
-export function ReauthForm({ next }: { next: string }) {
+export function ReauthForm({ next, hasKeys }: { next: string; hasKeys: boolean }) {
   return (
     <Form action={reauthAction} className="stack">
       <input type="hidden" name="next" value={next} />
       <div><label className="label" htmlFor="password">Password</label><input id="password" name="password" type="password" autoComplete="current-password" required className="field" /></div>
       <div><label className="label" htmlFor="code">Authenticator code</label><input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={7} className="field" style={{ fontFamily: "var(--font-mono)", letterSpacing: ".2em", fontSize: 18 }} /></div>
       <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>Confirm</button>
+      {hasKeys && <><div className="or"><span>or</span></div><KeySignInButton purpose="reauth" /></>}
     </Form>
   );
 }

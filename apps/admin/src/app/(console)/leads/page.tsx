@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { LeadSource } from "@demo/db";
+import type { LeadSource } from "@kurotrace/db";
 import { can } from "@/lib/permissions";
 import { fmt, LOSS, SCAM, SOURCE } from "@/lib/labels";
 import { requireStaff } from "@/lib/session";

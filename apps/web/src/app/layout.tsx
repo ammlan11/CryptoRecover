@@ -8,13 +8,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Report a Crypto Scam | Help Expose How Scams Work | Demo",
-    template: "%s | Demo",
+    default: "Report a Crypto Scam | Help Expose How Scams Work | Kuro Trace",
+    template: "%s | Kuro Trace",
   },
   description:
     "Share your crypto scam story. Investigators study every report to expose new tactics and warn others. Free and confidential. We never offer recovery.",
   robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
-  openGraph: { type: "website", siteName: "Demo", locale: "en_GB" },
+  openGraph: { type: "website", siteName: "Kuro Trace", locale: "en_GB" },
   twitter: { card: "summary_large_image" },
 };
 
@@ -32,11 +32,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {
                 "@type": "Organization",
                 "@id": `${siteUrl}/#org`,
-                name: "Demo",
+                name: "Kuro Trace",
                 url: siteUrl,
                 description: "Crypto scam research: reports are studied by investigators to warn others.",
               },
-              { "@type": "WebSite", "@id": `${siteUrl}/#website`, name: "Demo", url: siteUrl, publisher: { "@id": `${siteUrl}/#org` } },
+              { "@type": "WebSite", "@id": `${siteUrl}/#website`, name: "Kuro Trace", url: siteUrl, publisher: { "@id": `${siteUrl}/#org` } },
             ],
           }}
         />

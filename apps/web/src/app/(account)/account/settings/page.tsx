@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { prisma } from "@demo/db";
+import { prisma } from "@kurotrace/db";
 import { ActionForm } from "@/components/account/ActionForm";
 import { requireUser } from "@/lib/session";
 import { userEmail } from "@/server/accounts";

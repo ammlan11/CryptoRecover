@@ -1,0 +1,153 @@
+# Single-server deployment: public site, admin terminal, MySQL, virus scanner and an
+# HTTPS reverse proxy (Caddy, automatic certificates). See docs/LAUNCH.md.
+#
+#   cp .env.example deploy/.env   # fill it in
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+
+name: kurotrace
+
+x-app: &app
+  build:
+    context: ..
+    args:
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?set NEXT_PUBLIC_SITE_URL}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
+      NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
+      NEXT_PUBLIC_GOOGLE_TAG_ID: ${NEXT_PUBLIC_GOOGLE_TAG_ID:-}
+      NEXT_PUBLIC_GOOGLE_ADS_LEAD_SEND_TO: ${NEXT_PUBLIC_GOOGLE_ADS_LEAD_SEND_TO:-}
+      NEXT_PUBLIC_ADS_CONSENT: ${NEXT_PUBLIC_ADS_CONSENT:-banner}
+  image: kurotrace:latest
+  env_file: .env
+  environment:
+    DATABASE_URL: mysql://kurotrace_app:${MYSQL_APP_PASSWORD:?set MYSQL_APP_PASSWORD}@mysql:3306/kurotrace
+    CLAMAV_HOST: clamav
+    CLAMAV_PORT: "3310"
+    # Caddy appends the real visitor IP as the last X-Forwarded-For entry.
+    TRUSTED_IP_HEADER: x-forwarded-for
+    HOME: /tmp
+  restart: unless-stopped
+  # Read-only container: only /tmp and Next.js's cache folders are writable.
+  read_only: true
+  tmpfs: [/tmp, /app/apps/web/.next/cache, /app/apps/admin/.next/cache]
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  depends_on:
+    mysql: { condition: service_healthy }
+    migrate: { condition: service_completed_successfully }
+  networks: [internal, egress]
+
+services:
+  migrate:
+    <<: *app
+    working_dir: /app/packages/db
+    command: ["node", "/app/node_modules/prisma/build/index.js", "migrate", "deploy"]
+    restart: "no"
+    depends_on:
+      mysql: { condition: service_healthy }
+
+  web:
+    <<: *app
+    working_dir: /app/apps/web
+    command: ["node", "/app/node_modules/next/dist/bin/next", "start", "-p", "3000"]
+    networks: [internal, egress, edge]
+
+  admin:
+    <<: *app
+    working_dir: /app/apps/admin
+    command: ["node", "/app/node_modules/next/dist/bin/next", "start", "-p", "3001"]
+    environment:
+      DATABASE_URL: mysql://kurotrace_app:${MYSQL_APP_PASSWORD}@mysql:3306/kurotrace
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      TRUSTED_IP_HEADER: x-forwarded-for
+      HOME: /tmp
+      PORT: "3001"
+    networks: [internal, egress, edge]
+
+  # Catches up on any uploads the scanner missed (it was busy or restarting).
+  scan-pending:
+    <<: *app
+    working_dir: /app/apps/admin
+    command: ["sh", "-c", "while true; do node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/scan-pending.ts || true; sleep 300; done"]
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: kurotrace
+      MYSQL_USER: kurotrace_app
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD}
+    command: ["--require-secure-transport=OFF", "--local-infile=0", "--skip-name-resolve"]
+    volumes: [mysql-data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [internal] # never published to the internet
+
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    volumes: [clamav-db:/var/lib/clamav]
+    networks: [internal, egress] # egress: signature updates
+
+  # Encrypted nightly database backups (deploy/backup.sh), kept for BACKUP_KEEP_DAYS.
+  backup:
+    build: { context: ., dockerfile: backup.Dockerfile }
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?set BACKUP_AGE_RECIPIENT (age public key)}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+    volumes: [backups:/backups]
+    depends_on:
+      mysql: { condition: service_healthy }
+    networks: [internal]
+
+  # Off-site copy of the (already encrypted) backups to an S3 / R2 bucket, hourly.
+  # Enable with: docker compose --profile offsite up -d
+  offsite:
+    image: rclone/rclone:1.68
+    profiles: [offsite]
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c", "while true; do rclone copy /backups offsite:$${BACKUP_BUCKET} --include '*.age' --include '*.sha256' --s3-no-check-bucket; sleep 3600; done"]
+    environment:
+      BACKUP_BUCKET: ${BACKUP_BUCKET:-}
+      RCLONE_CONFIG_OFFSITE_TYPE: s3
+      RCLONE_CONFIG_OFFSITE_PROVIDER: ${BACKUP_S3_PROVIDER:-Cloudflare}
+      RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      RCLONE_CONFIG_OFFSITE_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+    volumes: [backups:/backups:ro]
+    networks: [egress]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?set ADMIN_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [web, admin]
+    networks: [edge, egress] # egress: certificates
+
+networks:
+  internal:
+    internal: true # app ⇄ database ⇄ scanner; no route to the internet
+  egress: {}       # outbound internet (email, KMS, storage, bot check, updates)
+  edge:
+    internal: true # Caddy ⇄ apps only
+
+volumes:
+  mysql-data:
+  clamav-db:
+  caddy-data:
+  caddy-config:
+  backups:

@@ -1,16 +1,16 @@
 import "server-only";
-import { checkPasswordBreach } from "@demo/core/breach";
-import { checkPasswordPolicy, hashPassword, verifyPassword, type PasswordProblem } from "@demo/core/password";
-import { generateToken, hashToken } from "@demo/core/tokens";
-import { generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, totpUri, verifyTotp } from "@demo/core/totp";
-import { prisma } from "@demo/db";
-import { decryptText, emailHashFor, encryptText, protectEmail } from "@demo/services/crypto";
+import { checkPasswordBreach } from "@kurotrace/core/breach";
+import { checkPasswordPolicy, hashPassword, verifyPassword, type PasswordProblem } from "@kurotrace/core/password";
+import { generateToken, hashToken } from "@kurotrace/core/tokens";
+import { generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, totpUri, verifyTotp } from "@kurotrace/core/totp";
+import { prisma } from "@kurotrace/db";
+import { decryptText, emailHashFor, encryptText, protectEmail } from "@kurotrace/services/crypto";
 import { siteUrl } from "@/lib/site";
-import { userEvent } from "@demo/services/audit";
+import { userEvent } from "@kurotrace/services/audit";
 import { consumeEmailToken, issueEmailToken, peekEmailToken } from "./email-tokens";
-import { sendEmail, templates } from "@demo/services/email";
+import { sendEmail, templates } from "@kurotrace/services/email";
 import { destroyOtherSessions } from "./sessions";
-import { storage } from "@demo/services/storage";
+import { storage } from "@kurotrace/services/storage";
 
 export const USER_EMAIL_CONTEXT = "user.email";
 const MAX_FAILED_LOGINS = 5;

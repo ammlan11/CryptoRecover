@@ -9,7 +9,7 @@ export default async function LoginPage() {
   return (
     <main className="auth">
       <div className="auth-card">
-        <h1>Demo admin</h1>
+        <h1>Kuro Trace admin</h1>
         <p className="auth-tag">AUTHORISED STAFF ONLY · EVERY ACTION IS LOGGED</p>
         <LoginForm />
       </div>

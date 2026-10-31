@@ -1,8 +1,8 @@
 import "server-only";
-import { prisma, type IssueStatus, type LeadSource, type Staff } from "@demo/db";
-import { verifyAuditChain, type AuditRow } from "@demo/core/audit";
-import { decryptText } from "@demo/services/crypto";
-import { aad, issueText } from "@demo/services/records";
+import { prisma, type IssueStatus, type LeadSource, type Staff } from "@kurotrace/db";
+import { verifyAuditChain, type AuditRow } from "@kurotrace/core/audit";
+import { decryptText } from "@kurotrace/services/crypto";
+import { aad, issueText } from "@kurotrace/services/records";
 import { can, Forbidden } from "@/lib/permissions";
 import { overdueWhere } from "./cases";
 import { staffEvent } from "./staff-auth";

@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { RateLimiter } from "@demo/core/rate-limit";
+import { RateLimiter } from "@kurotrace/core/rate-limit";
 import { clientIp } from "@/lib/request";
+import { BOT_CHECK_FAILED, passesBotCheck } from "@/lib/bot-check";
 import { clearChallengeCookie, setChallengeCookie, signIn, takeChallengeCookie } from "@/lib/session";
 import {
   accountFromContinueLink,
@@ -14,7 +15,7 @@ import {
   resetPassword,
 } from "@/server/accounts";
 import { createDraft } from "@/server/reports";
-import { prisma } from "@demo/db";
+import { prisma } from "@kurotrace/db";
 
 export type AuthState = { status: "idle" } | { status: "error"; message: string } | { status: "success"; message: string };
 
@@ -37,6 +38,7 @@ async function limited(limiter: RateLimiter, key: string) {
 
 export async function signupAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   if (await limited(signupLimiter, "signup")) return SLOW_DOWN;
+  if (!(await passesBotCheck(form, "signup"))) return { status: "error", message: BOT_CHECK_FAILED };
   const parsed = z.object({ email, password }).safeParse({ email: form.get("email"), password: form.get("password") });
   if (!parsed.success) return { status: "error", message: "Enter a valid email and password." };
   if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the privacy notice to continue." };
@@ -52,6 +54,7 @@ export async function signupAction(_prev: AuthState, form: FormData): Promise<Au
 
 export async function loginAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   if (await limited(loginLimiter, "login")) return SLOW_DOWN;
+  if (!(await passesBotCheck(form, "login"))) return { status: "error", message: BOT_CHECK_FAILED };
   const parsed = z.object({ email, password }).safeParse({ email: form.get("email"), password: form.get("password") });
   if (!parsed.success) return { status: "error", message: "Email or password is not correct." };
   let result;
@@ -95,6 +98,7 @@ export async function twoStepAction(_prev: AuthState, form: FormData): Promise<A
 
 export async function forgotAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   if (await limited(resetLimiter, "reset")) return SLOW_DOWN;
+  if (!(await passesBotCheck(form, "forgot"))) return { status: "error", message: BOT_CHECK_FAILED };
   const parsed = email.safeParse(form.get("email"));
   if (!parsed.success) return { status: "error", message: "Enter a valid email address." };
   try {

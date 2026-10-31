@@ -33,7 +33,7 @@ describe("TOTP", () => {
   });
 
   it("builds an authenticator URI", () => {
-    expect(totpUri("ABC", "a@b.com")).toBe("otpauth://totp/Demo%3Aa%40b.com?secret=ABC&issuer=Demo&algorithm=SHA1&digits=6&period=30");
+    expect(totpUri("ABC", "a@b.com")).toBe("otpauth://totp/Kuro%20Trace%3Aa%40b.com?secret=ABC&issuer=Kuro%20Trace&algorithm=SHA1&digits=6&period=30");
   });
 
   it("makes unique recovery codes and hashes them case- and dash-insensitively", () => {

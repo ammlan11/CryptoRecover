@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { buildCsp, generateNonce } from "@demo/core/headers";
+import { buildCsp, generateNonce } from "@kurotrace/core/headers";
 import { ATTRIBUTION_COOKIE, attributionFromUrl } from "@/lib/attribution";
+import { adCspSources, ADS_ENABLED, isAdPage } from "@/lib/ads";
 
 /**
  * Runs before every page:
@@ -8,11 +9,22 @@ import { ATTRIBUTION_COOKIE, attributionFromUrl } from "@/lib/attribution";
  *    applies it to its own scripts.
  * 2. Saves ad attribution (utm_*, gclid, fbclid) from the landing URL in a first-party
  *    cookie for 30 days, so lead forms can record which campaign brought the visitor.
- * Ad pixels (Phase 5) will be allowed on /lp/* only, never on account or report pages.
+ * 3. Allows the Cloudflare bot-check frame when it is configured, and the Meta/Google
+ *    ad tags on campaign landing pages (/lp/*) only.
  */
 export function proxy(request: NextRequest) {
   const nonce = generateNonce();
-  const csp = buildCsp({ nonce, dev: process.env.NODE_ENV === "development" });
+  const botCheck = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? ["https://challenges.cloudflare.com"] : [];
+  // Ad tags are allowed on campaign landing pages only.
+  const ads = ADS_ENABLED && isAdPage(request.nextUrl.pathname) ? adCspSources() : { script: [], connect: [], img: [], frame: [] };
+  const csp = buildCsp({
+    nonce,
+    dev: process.env.NODE_ENV === "development",
+    extraScriptSrc: [...botCheck, ...ads.script],
+    extraConnectSrc: ads.connect,
+    extraImgSrc: ads.img,
+    extraFrameSrc: [...botCheck, ...ads.frame],
+  });
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);

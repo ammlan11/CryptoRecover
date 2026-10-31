@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy notice",
-  description: "How Demo collects, protects and uses the information you share.",
+  description: "How Kuro Trace collects, protects and uses the information you share.",
   alternates: { canonical: "/privacy" },
   robots: { index: false },
 };
@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           Draft: this notice is a placeholder and must be replaced by legal-approved text before launch.
         </p>
         <h1>Privacy notice</h1>
-        <p className="lead">Demo is a crypto scam research project run by [Legal entity], [registered address]. Contact: [privacy email].</p>
+        <p className="lead">Kuro Trace is a crypto scam research project run by [Legal entity], [registered address]. Contact: [privacy email].</p>
         <h2>What we collect</h2>
         <p>[Email address; the scam report you submit, including wallets, websites and handles; optional evidence files; technical data such as IP address for security and rate limiting; campaign source (UTM, gclid, fbclid) when you arrive from an ad.]</p>
         <h2>Why we use it</h2>

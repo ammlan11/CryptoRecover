@@ -1,6 +1,6 @@
 import "server-only";
-import { generateToken, hashToken } from "@demo/core/tokens";
-import { prisma } from "@demo/db";
+import { generateToken, hashToken } from "@kurotrace/core/tokens";
+import { prisma } from "@kurotrace/db";
 
 export const SESSION_ABSOLUTE_DAYS = 30;
 export const SESSION_IDLE_DAYS = 7;

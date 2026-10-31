@@ -1,13 +1,29 @@
 import "server-only";
-import { checkPasswordBreach } from "@demo/core/breach";
-import { checkPasswordPolicy, hashPassword, verifyPassword } from "@demo/core/password";
-import { isIpAllowed, parseAllowList } from "@demo/core/ip";
-import { generateToken, hashToken } from "@demo/core/tokens";
-import { generateTotpSecret, totpUri, verifyTotp } from "@demo/core/totp";
-import { prisma, type StaffRole } from "@demo/db";
-import { audit } from "@demo/services/audit";
-import { decryptText, encryptText } from "@demo/services/crypto";
-import { aad } from "@demo/services/records";
+import { checkPasswordBreach } from "@kurotrace/core/breach";
+import { checkPasswordPolicy, hashPassword, verifyPassword } from "@kurotrace/core/password";
+import { isIpAllowed, parseAllowList } from "@kurotrace/core/ip";
+import { generateToken, hashToken } from "@kurotrace/core/tokens";
+import { generateTotpSecret, totpUri, verifyTotp } from "@kurotrace/core/totp";
+import { prisma, type StaffRole } from "@kurotrace/db";
+import { audit } from "@kurotrace/services/audit";
+import { decryptText, encryptText } from "@kurotrace/services/crypto";
+import { aad } from "@kurotrace/services/records";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
+import { keyAssertionValid, keysRequiredFor } from "./security-keys";
+
+/** Second step of a staff sign-in: an authenticator code, or a security key / passkey. */
+export type SecondFactor = string | { code: string } | { key: AuthenticationResponseJSON };
+
+async function secondFactorOk(
+  staff: { id: string; totpSecretEnc: string | null; totpLastStep: number | null },
+  factor: SecondFactor,
+  purpose: "login" | "reauth",
+) {
+  if (typeof factor === "object" && "key" in factor) return keyAssertionValid(purpose, staff.id, factor.key);
+  const code = typeof factor === "string" ? factor : factor.code;
+  if (keysRequiredFor(await prisma.webAuthnKey.count({ where: { staffId: staff.id } }))) return false;
+  return codeAccepted(staff, code);
+}
 
 export const STAFF_IDLE_MINUTES = 120;
 export const STAFF_ABSOLUTE_HOURS = 12;
@@ -46,7 +62,7 @@ async function codeAccepted(staff: { id: string; totpSecretEnc: string | null; t
 export type StaffLogin = { ok: true; staffId: string } | { ok: false; reason: "invalid" | "locked" };
 
 /** Username + password + authenticator code in one step. Every outcome is audited with the IP. */
-export async function staffLogin(username: string, password: string, code: string, ip: string): Promise<StaffLogin> {
+export async function staffLogin(username: string, password: string, factor: SecondFactor, ip: string): Promise<StaffLogin> {
   const staff = await prisma.staff.findUnique({ where: { username: username.trim().toLowerCase() } });
   if (!staff || !staff.activatedAt || staff.disabledAt) {
     await verifyPassword(await timingDummy(), password);
@@ -58,7 +74,7 @@ export async function staffLogin(username: string, password: string, code: strin
     return { ok: false, reason: "locked" };
   }
   const passwordOk = await verifyPassword(staff.passwordHash, password);
-  const codeOk = passwordOk && (await codeAccepted(staff, code));
+  const codeOk = passwordOk && (await secondFactorOk(staff, factor, "login"));
   const ipOk = ipAllowedForStaff(staff.allowedIps, ip);
   if (!passwordOk || !codeOk || !ipOk) {
     const failed = staff.failedLogins + 1;
@@ -132,9 +148,9 @@ export function recentlyReauthenticated(session: { reauthenticatedAt: Date | nul
 }
 
 /** Password + fresh code again, required before exports and staff changes. */
-export async function reauthenticate(sessionId: string, staffId: string, password: string, code: string, ip: string) {
+export async function reauthenticate(sessionId: string, staffId: string, password: string, factor: SecondFactor, ip: string) {
   const staff = await prisma.staff.findUniqueOrThrow({ where: { id: staffId } });
-  const ok = (await verifyPassword(staff.passwordHash, password)) && (await codeAccepted(staff, code));
+  const ok = (await verifyPassword(staff.passwordHash, password)) && (await secondFactorOk(staff, factor, "reauth"));
   await staffEvent(staffId, ip, ok ? "staff.reauthenticated" : "staff.reauth_failed");
   if (ok) await prisma.staffSession.update({ where: { id: sessionId }, data: { reauthenticatedAt: new Date() } });
   return ok;
@@ -184,7 +200,7 @@ export async function inviteAuthenticator(token: string) {
     secret = generateTotpSecret();
     await prisma.staff.update({ where: { id: invite.staffId }, data: { totpSecretEnc: encryptText(secret, aad.staffTotp(invite.staffId)), totpLastStep: null } });
   }
-  return { username: invite.staff.username, role: invite.staff.role, secret, uri: totpUri(secret, invite.staff.username, "Demo Admin") };
+  return { username: invite.staff.username, role: invite.staff.role, secret, uri: totpUri(secret, invite.staff.username, "Kuro Trace Admin") };
 }
 
 /** Finishes setup: password (policy + breach check) and a working authenticator code. */
@@ -218,6 +234,7 @@ export async function resetStaff(ownerId: string, ip: string, staffId: string) {
   await prisma.$transaction([
     prisma.staff.update({ where: { id: staffId }, data: { activatedAt: null, totpSecretEnc: null, totpLastStep: null, passwordHash: await hashPassword(generateToken(24)) } }),
     prisma.staffSession.deleteMany({ where: { staffId } }),
+    prisma.webAuthnKey.deleteMany({ where: { staffId } }),
   ]);
   const token = await issueInvite(staffId, ownerId);
   await staffEvent(ownerId, ip, "staff.reset", "staff", staffId);

@@ -1,7 +1,7 @@
 /**
  * Creates the first owner account (run once per environment, from a trusted machine).
  *
- *   npm run create-owner -w @demo/admin -- --username alice
+ *   npm run create-owner -w @kurotrace/admin -- --username alice
  *
  * Asks for a password, then prints an authenticator key and QR link to scan.
  * Later staff are invited from the admin terminal (Staff → Invite).
@@ -11,18 +11,20 @@
  */
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import { checkPasswordPolicy, hashPassword } from "@demo/core/password";
-import { generateTotpSecret, totpUri } from "@demo/core/totp";
-import { prisma } from "@demo/db";
-import { audit } from "@demo/services/audit";
-import { encryptText } from "@demo/services/crypto";
-import { aad } from "@demo/services/records";
+import { checkPasswordPolicy, hashPassword } from "@kurotrace/core/password";
+import { generateTotpSecret, totpUri } from "@kurotrace/core/totp";
+import { prisma } from "@kurotrace/db";
+import { loadKeys } from "@kurotrace/services/keys";
+import { audit } from "@kurotrace/services/audit";
+import { encryptText } from "@kurotrace/services/crypto";
+import { aad } from "@kurotrace/services/records";
 
 async function main() {
+  await loadKeys();
   const args = process.argv.slice(2);
   const username = (args[args.indexOf("--username") + 1] ?? "").trim().toLowerCase();
   if (!/^[a-z0-9._-]{3,64}$/.test(username) || args.indexOf("--username") === -1) {
-    console.error("Usage: npm run create-owner -w @demo/admin -- --username <name>");
+    console.error("Usage: npm run create-owner -w @kurotrace/admin -- --username <name>");
     process.exit(1);
   }
   if (await prisma.staff.findUnique({ where: { username } })) {
@@ -51,7 +53,7 @@ async function main() {
   if (!fixed) {
     console.log("\nAdd this to your authenticator app now. It will not be shown again:");
     console.log(`  Key: ${secret.match(/.{1,4}/g)?.join(" ")}`);
-    console.log(`  Link: ${totpUri(secret, username, "Demo Admin")}\n`);
+    console.log(`  Link: ${totpUri(secret, username, "Kuro Trace Admin")}\n`);
   }
   await prisma.$disconnect();
 }

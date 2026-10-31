@@ -1,7 +1,7 @@
-// Demo — crypto scam research platform
+// Kuro Trace — crypto scam research platform
 //
 // Conventions
-// - Columns ending in `Enc` hold AES-256-GCM ciphertext from @demo/core/crypto, never plain text.
+// - Columns ending in `Enc` hold AES-256-GCM ciphertext from @kurotrace/core/crypto, never plain text.
 // - Columns ending in `Hash` hold a blind index (HMAC) or a token hash, used for lookups.
 // - Public users and staff live in separate tables: a bug in user sign-up can never create an admin.
 
@@ -449,7 +449,7 @@ model StaffSession {
   @@index([staffId])
 }
 
-/// Append-only. Each row carries the previous row's hash (see @demo/core/audit).
+/// Append-only. Each row carries the previous row's hash (see @kurotrace/core/audit).
 /// The app's database user should have INSERT and SELECT on this table, never UPDATE or DELETE.
 model AuditLog {
   id        BigInt   @id @default(autoincrement())

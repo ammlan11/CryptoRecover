@@ -5,19 +5,19 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { hashPassword } from "@demo/core/password";
-import { generatePublicRef } from "@demo/core/tokens";
-import { generateTotpSecret, totpAt } from "@demo/core/totp";
-import { prisma, type StaffRole } from "@demo/db";
+import { hashPassword } from "@kurotrace/core/password";
+import { generatePublicRef } from "@kurotrace/core/tokens";
+import { generateTotpSecret, totpAt } from "@kurotrace/core/totp";
+import { prisma, type StaffRole } from "@kurotrace/db";
 
 process.env.EMAIL_PROVIDER = "memory";
 process.env.EVIDENCE_STORAGE = "local";
 process.env.EVIDENCE_LOCAL_DIR = mkdtempSync(path.join(tmpdir(), "admin-evidence-"));
 vi.stubGlobal("fetch", async () => ({ ok: true, text: async () => "" })); // breach check: not breached
 
-const { outbox } = await import("@demo/services/email");
-const { encryptText } = await import("@demo/services/crypto");
-const { aad, messageText } = await import("@demo/services/records");
+const { outbox } = await import("@kurotrace/services/email");
+const { encryptText } = await import("@kurotrace/services/crypto");
+const { aad, messageText } = await import("@kurotrace/services/records");
 const auth = await import("@/server/staff-auth");
 const cases = await import("@/server/cases");
 const insights = await import("@/server/insights");

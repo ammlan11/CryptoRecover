@@ -1,4 +1,4 @@
-import type { IssueStatus } from "@demo/db";
+import type { IssueStatus } from "@kurotrace/db";
 import { fmt } from "@/lib/labels";
 import { requireStaff } from "@/lib/session";
 import { listIssues } from "@/server/insights";
