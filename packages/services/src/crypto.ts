@@ -5,20 +5,11 @@ import {
   decryptField,
   encryptBytes,
   encryptField,
-  loadBlindIndexKeyFromEnv,
-  loadKeyRingFromEnv,
   normalizeEmail,
-  type KeyRing,
 } from "@kurotrace/core/crypto";
+import { currentKeys } from "./keys";
 
-let ring: KeyRing | null = null;
-let indexKey: Buffer | null = null;
-
-function keys() {
-  ring ??= loadKeyRingFromEnv();
-  indexKey ??= loadBlindIndexKeyFromEnv();
-  return { ring, indexKey };
-}
+const keys = () => currentKeys();
 
 /** Lookup hash for an email. `context` keeps indexes in different tables unrelated. */
 export function emailHashFor(email: string, context: string) {

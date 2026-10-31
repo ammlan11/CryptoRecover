@@ -9,12 +9,14 @@
  */
 import { clamdFromEnv, scanWithClamd, ScannerUnavailable } from "@kurotrace/core/malware";
 import { prisma } from "@kurotrace/db";
+import { loadKeys } from "@kurotrace/services/keys";
 import { audit } from "@kurotrace/services/audit";
 import { decryptFile } from "@kurotrace/services/crypto";
 import { aad } from "@kurotrace/services/records";
 import { storage } from "@kurotrace/services/storage";
 
 async function main() {
+  await loadKeys();
   const opts = clamdFromEnv();
   if (!opts) {
     console.error("CLAMAV_HOST is not set; nothing scanned.");

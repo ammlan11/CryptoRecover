@@ -11,7 +11,8 @@
     "scan-pending": "tsx --conditions=react-server scripts/scan-pending.ts",
     "test": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
-    "test:e2e": "node test/e2e/admin-smoke.mjs"
+    "test:e2e": "node test/e2e/admin-smoke.mjs",
+    "wrap-keys": "tsx --conditions=react-server scripts/wrap-keys.ts"
   },
   "dependencies": {
     "@kurotrace/core": "*",
@@ -25,7 +26,8 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "server-only": "^0.0.1",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@aws-sdk/client-kms": "^3"
   },
   "devDependencies": {
     "@types/node": "^22",

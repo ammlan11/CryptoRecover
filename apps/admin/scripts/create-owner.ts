@@ -14,11 +14,13 @@ import { stdin, stdout } from "node:process";
 import { checkPasswordPolicy, hashPassword } from "@kurotrace/core/password";
 import { generateTotpSecret, totpUri } from "@kurotrace/core/totp";
 import { prisma } from "@kurotrace/db";
+import { loadKeys } from "@kurotrace/services/keys";
 import { audit } from "@kurotrace/services/audit";
 import { encryptText } from "@kurotrace/services/crypto";
 import { aad } from "@kurotrace/services/records";
 
 async function main() {
+  await loadKeys();
   const args = process.argv.slice(2);
   const username = (args[args.indexOf("--username") + 1] ?? "").trim().toLowerCase();
   if (!/^[a-z0-9._-]{3,64}$/.test(username) || args.indexOf("--username") === -1) {
