@@ -8,6 +8,12 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    # Major versions (Prisma 7, TypeScript 7, Node types above our runtime…) need a
+    # planned upgrade, not a weekly auto-PR. Security fixes still arrive through
+    # Dependabot security updates regardless of this rule.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
