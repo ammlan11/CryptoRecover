@@ -1,0 +1,27 @@
+{
+  "name": "@demo/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./crypto": "./src/crypto.ts",
+    "./password": "./src/password.ts",
+    "./breach": "./src/breach.ts",
+    "./tokens": "./src/tokens.ts",
+    "./audit": "./src/audit.ts",
+    "./ip": "./src/ip.ts",
+    "./headers": "./src/headers.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

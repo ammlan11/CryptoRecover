@@ -1,0 +1,47 @@
+:root {
+  --navy-950: #010720;
+  --navy-900: #020b33;
+  --navy-800: #061445;
+  --line-dark: #23306a;
+  --ink: #0b1433;
+  --ink-muted: #4a5375;
+  --paper: #f2f4f9;
+  --cyan: #3fd0e6;
+  --cyan-light: #7fe2f0;
+  --nav-pill: #d6dbe8;
+  --danger: #d92d20;
+  --danger-text: #b42318;
+  --warning: #ffb020;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--navy-900);
+  color: #fff;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
