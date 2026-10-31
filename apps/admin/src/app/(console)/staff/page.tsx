@@ -1,4 +1,4 @@
-import { prisma } from "@demo/db";
+import { prisma } from "@kurotrace/db";
 import { Form } from "@/components/Form";
 import { ROLE_LABEL } from "@/lib/permissions";
 import { fmt } from "@/lib/labels";

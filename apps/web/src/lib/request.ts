@@ -1,6 +1,6 @@
 import "server-only";
 import { headers } from "next/headers";
-import { clientIpFromHeaders } from "@demo/core/ip";
+import { clientIpFromHeaders } from "@kurotrace/core/ip";
 
 export async function clientIp(): Promise<string> {
   const h = await headers();

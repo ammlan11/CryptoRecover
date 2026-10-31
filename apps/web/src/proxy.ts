@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { buildCsp, generateNonce } from "@demo/core/headers";
+import { buildCsp, generateNonce } from "@kurotrace/core/headers";
 import { ATTRIBUTION_COOKIE, attributionFromUrl } from "@/lib/attribution";
 
 /**

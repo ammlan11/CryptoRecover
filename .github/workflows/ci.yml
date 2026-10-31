@@ -30,8 +30,8 @@ jobs:
       - run: npm test
       - name: Dependency audit (fail on high or critical)
         run: npm audit --audit-level=high --omit=dev
-      - run: npm run build -w @demo/web
-      - run: npm run build -w @demo/admin
+      - run: npm run build -w @kurotrace/web
+      - run: npm run build -w @kurotrace/admin
 
   integration:
     runs-on: ubuntu-latest
@@ -59,19 +59,19 @@ jobs:
       - run: npm ci
       - run: npm run db:generate
       - name: Apply migrations to a fresh database
-        run: npx -w @demo/db prisma migrate deploy
+        run: npx -w @kurotrace/db prisma migrate deploy
       - name: Fail if the schema has changes without a migration
         run: |
           mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE shadow"
-          npx -w @demo/db prisma migrate diff \
+          npx -w @kurotrace/db prisma migrate diff \
             --from-migrations prisma/migrations \
             --to-schema-datamodel prisma/schema.prisma \
             --shadow-database-url mysql://root:root@127.0.0.1:3306/shadow \
             --exit-code
       - name: Integration tests (accounts, reports, evidence, audit chain)
-        run: npm run test:integration -w @demo/web
+        run: npm run test:integration -w @kurotrace/web
       - name: Integration tests (admin — staff sign-in, roles, cases, exports)
-        run: npm run test:integration -w @demo/admin
+        run: npm run test:integration -w @kurotrace/admin
 
   e2e:
     runs-on: ubuntu-latest
@@ -103,15 +103,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run db:generate
-      - run: npx -w @demo/db prisma migrate deploy
-      - run: npm run build -w @demo/web
-      - run: npm run build -w @demo/admin
+      - run: npx -w @kurotrace/db prisma migrate deploy
+      - run: npm run build -w @kurotrace/web
+      - run: npm run build -w @kurotrace/admin
       - name: Create the owner account
         env:
           OWNER_PASSWORD: e2e owner passphrase long
           ALLOW_FIXED_TOTP: "true"
           OWNER_TOTP_SECRET: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
-        run: npm run create-owner -w @demo/admin -- --username owner
+        run: npm run create-owner -w @kurotrace/admin -- --username owner
       - name: Start the production servers
         env:
           ADMIN_ALLOWED_IPS: 127.0.0.1
@@ -121,19 +121,19 @@ jobs:
           (cd apps/admin && npx next start -p 3001 > /tmp/admin.log 2>&1 &)
           for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:3000/login && break; sleep 1; done
           for i in $(seq 1 60); do curl -sf -o /dev/null -H "x-forwarded-for: 127.0.0.1" http://localhost:3001/login && break; sleep 1; done
-      - run: npx -w @demo/web playwright install --with-deps chromium
+      - run: npx -w @kurotrace/web playwright install --with-deps chromium
       - name: Browser end-to-end test
         env:
           BASE_URL: http://localhost:3000
           MYSQL: mysql -h127.0.0.1 -uroot -proot demo_e2e
-        run: npm run test:e2e -w @demo/web
+        run: npm run test:e2e -w @kurotrace/web
       - name: Admin browser end-to-end test
         env:
           ADMIN_URL: http://localhost:3001
           WEB_URL: http://localhost:3000
           OWNER_PASSWORD: e2e owner passphrase long
           OWNER_TOTP_SECRET: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
-        run: npm run test:e2e -w @demo/admin
+        run: npm run test:e2e -w @kurotrace/admin
       - name: Server logs on failure
         if: failure()
         run: |

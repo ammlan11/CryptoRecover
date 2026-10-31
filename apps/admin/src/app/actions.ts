@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { RateLimiter } from "@demo/core/rate-limit";
+import { RateLimiter } from "@kurotrace/core/rate-limit";
 import { Forbidden } from "@/lib/permissions";
 import { endCurrentStaffSession, requireRecentAuth, requireStaff, staffIp, startStaffSession } from "@/lib/session";
 import {

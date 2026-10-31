@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { RateLimiter } from "@demo/core/rate-limit";
+import { RateLimiter } from "@kurotrace/core/rate-limit";
 import { clientIp } from "@/lib/request";
 import { clearChallengeCookie, setChallengeCookie, signIn, takeChallengeCookie } from "@/lib/session";
 import {
@@ -14,7 +14,7 @@ import {
   resetPassword,
 } from "@/server/accounts";
 import { createDraft } from "@/server/reports";
-import { prisma } from "@demo/db";
+import { prisma } from "@kurotrace/db";
 
 export type AuthState = { status: "idle" } | { status: "error"; message: string } | { status: "success"; message: string };
 

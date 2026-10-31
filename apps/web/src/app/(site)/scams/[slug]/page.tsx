@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const scam = getScam((await params).slug);
   if (!scam) return {};
   return {
-    title: { absolute: `${scam.seoTitle} | Demo` },
+    title: { absolute: `${scam.seoTitle} | Kuro Trace` },
     description: scam.seoDescription,
     alternates: { canonical: `/scams/${scam.slug}` },
     openGraph: { title: scam.seoTitle, description: scam.seoDescription, type: "article" },

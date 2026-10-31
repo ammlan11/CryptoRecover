@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@demo/db";
-import { evidenceName, messageText, narrativeOf, noteText } from "@demo/services/records";
+import { prisma } from "@kurotrace/db";
+import { evidenceName, messageText, narrativeOf, noteText } from "@kurotrace/services/records";
 import { Form } from "@/components/Form";
 import { can } from "@/lib/permissions";
 import { fmt, fmtDay, LOSS, Pill, SCAM, STATUS } from "@/lib/labels";

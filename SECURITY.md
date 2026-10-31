@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Email **[security@demo-domain]** with details and steps to reproduce. Please do not open a
+Email **[security@your-domain]** with details and steps to reproduce. Please do not open a
 public issue. We acknowledge reports within 2 business days.
 
 ## How this codebase protects data

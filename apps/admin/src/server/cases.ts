@@ -1,9 +1,9 @@
 import "server-only";
-import { prisma, type Prisma, type ReportStatus, type ScamType, type Staff } from "@demo/db";
-import { decryptFile, decryptText, encryptText } from "@demo/services/crypto";
-import { sendEmail, templates } from "@demo/services/email";
-import { aad } from "@demo/services/records";
-import { storage } from "@demo/services/storage";
+import { prisma, type Prisma, type ReportStatus, type ScamType, type Staff } from "@kurotrace/db";
+import { decryptFile, decryptText, encryptText } from "@kurotrace/services/crypto";
+import { sendEmail, templates } from "@kurotrace/services/email";
+import { aad } from "@kurotrace/services/records";
+import { storage } from "@kurotrace/services/storage";
 import { can, Forbidden } from "@/lib/permissions";
 import { staffEvent } from "./staff-auth";
 

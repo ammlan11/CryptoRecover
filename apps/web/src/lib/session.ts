@@ -2,7 +2,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { ipHashFor } from "@demo/services/crypto";
+import { ipHashFor } from "@kurotrace/services/crypto";
 import { clientIp } from "@/lib/request";
 import { createSession, destroySession, resolveSession } from "@/server/sessions";
 

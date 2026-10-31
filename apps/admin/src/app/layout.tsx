@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Admin terminal", template: "%s · Demo admin" },
+  title: { default: "Admin terminal", template: "%s · Kuro Trace admin" },
   robots: { index: false, follow: false, nocache: true },
   referrer: "no-referrer",
 };

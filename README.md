@@ -1,6 +1,6 @@
-# Demo — crypto scam research platform
+# Kuro Trace — crypto scam research platform
 
-Working name **Demo** until the brand and domain are announced.
+Brand: **Kuro Trace**. The production domain is set with `NEXT_PUBLIC_SITE_URL`.
 
 People share how a crypto scam reached them; an in-house research team and a private
 investigation team study each report to classify the scam and link patterns; confirmed
@@ -48,8 +48,8 @@ on GitHub and commits it back. CI fails any pull request whose schema and migrat
 | Command | What it covers | Needs |
 | --- | --- | --- |
 | `npm test` | Unit tests (crypto, 2FA, files, checker, attribution) | nothing |
-| `npm run test:integration -w @demo/web` | Accounts, sessions, two-step, reset, reports, evidence, audit chain | MySQL |
-| `npm run test:e2e -w @demo/web` | Browser: sign up → five-step report → evidence → message → two-step login | running server + MySQL |
+| `npm run test:integration -w @kurotrace/web` | Accounts, sessions, two-step, reset, reports, evidence, audit chain | MySQL |
+| `npm run test:e2e -w @kurotrace/web` | Browser: sign up → five-step report → evidence → message → two-step login | running server + MySQL |
 
 All three run in CI on every pull request.
 

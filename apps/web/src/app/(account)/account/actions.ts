@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { RateLimiter } from "@demo/core/rate-limit";
-import { prisma } from "@demo/db";
+import { RateLimiter } from "@kurotrace/core/rate-limit";
+import { prisma } from "@kurotrace/db";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";
 import { clientIp } from "@/lib/request";
 import { requireUser, signOut } from "@/lib/session";
 import { changePassword, confirmTwoStep, deleteAccount, disableTwoStep, sendVerification, userEmail } from "@/server/accounts";
-import { sendEmail, templates } from "@demo/services/email";
+import { sendEmail, templates } from "@kurotrace/services/email";
 import {
   addEvidence,
   addPayment,

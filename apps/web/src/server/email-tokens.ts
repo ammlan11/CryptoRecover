@@ -1,6 +1,6 @@
 import "server-only";
-import { generateToken, hashToken } from "@demo/core/tokens";
-import { prisma, type EmailTokenPurpose } from "@demo/db";
+import { generateToken, hashToken } from "@kurotrace/core/tokens";
+import { prisma, type EmailTokenPurpose } from "@kurotrace/db";
 
 const TTL_MINUTES: Record<EmailTokenPurpose, number> = {
   VERIFY_EMAIL: 24 * 60,

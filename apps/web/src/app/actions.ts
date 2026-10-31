@@ -8,13 +8,13 @@
  */
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { normalizeIndicator } from "@demo/core/indicators";
-import { RateLimiter } from "@demo/core/rate-limit";
-import { prisma, type IndicatorKind, type LeadSource } from "@demo/db";
+import { normalizeIndicator } from "@kurotrace/core/indicators";
+import { RateLimiter } from "@kurotrace/core/rate-limit";
+import { prisma, type IndicatorKind, type LeadSource } from "@kurotrace/db";
 import { ATTRIBUTION_COOKIE, parseAttribution } from "@/lib/attribution";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";
 import { clientIp } from "@/lib/request";
-import { protectEmail } from "@demo/services/crypto";
+import { protectEmail } from "@kurotrace/services/crypto";
 import { sendContinueReportLink } from "@/server/accounts";
 
 export type FormState =

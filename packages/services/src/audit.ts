@@ -1,6 +1,6 @@
 import "server-only";
-import { buildAuditRow, type AuditEntry } from "@demo/core/audit";
-import { prisma, Prisma } from "@demo/db";
+import { buildAuditRow, type AuditEntry } from "@kurotrace/core/audit";
+import { prisma, Prisma } from "@kurotrace/db";
 
 /**
  * Appends to the hash-chained audit log. The previous row is read with a row lock

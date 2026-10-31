@@ -14,7 +14,7 @@ const FAQ = [
     q: "How do I report a crypto scam?",
     a: "Share what happened using the form at the top of this page. It takes about 5 minutes. Also report it to your local police and to the exchange or bank you paid from.",
   },
-  { q: "Can you get my money back?", a: "No. Demo is a research project, not a recovery service. Be wary of anyone who offers to recover crypto for a fee." },
+  { q: "Can you get my money back?", a: "No. Kuro Trace is a research project, not a recovery service. Be wary of anyone who offers to recover crypto for a fee." },
   { q: "Why should I report it?", a: "Your report shows how the scam works and links the wallets and sites behind it, so we can warn others sooner." },
   {
     q: "How can I check if a crypto website is a scam?",
@@ -60,7 +60,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="wrap" style={{ paddingBottom: 56 }} aria-label="Why people trust Demo">
+      <section className="wrap" style={{ paddingBottom: 56 }} aria-label="Why people trust Kuro Trace">
         <div className="trust">
           <div><div className="eyebrow">Cost</div><div className="trust-value">Free, always</div></div>
           <div><div className="eyebrow">Privacy</div><div className="trust-value">Encrypted, never published</div></div>

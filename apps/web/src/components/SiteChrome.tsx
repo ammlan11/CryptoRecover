@@ -15,7 +15,7 @@ export function NoticeBar() {
   return (
     <div className="notice">
       <span className="notice-dot" aria-hidden="true" />
-      Demo will never ask you for payment, a &ldquo;recovery fee&rdquo; or your seed phrase.
+      Kuro Trace will never ask you for payment, a &ldquo;recovery fee&rdquo; or your seed phrase.
     </div>
   );
 }
@@ -24,9 +24,9 @@ export function SiteHeader() {
   return (
     <header className="wrap site-header">
       <div className="pill pill-main">
-        <Link href="/" className="brand" aria-label="Demo home">
+        <Link href="/" className="brand" aria-label="Kuro Trace home">
           <ShieldMark />
-          <span>Demo</span>
+          <span>Kuro Trace</span>
         </Link>
         <nav className="nav" aria-label="Main">
           <Link href="/scams">Crypto scams</Link>
@@ -50,7 +50,7 @@ export function SiteFooter() {
     <footer className="footer">
       <div className="wrap footer-grid">
         <div>
-          <span style={{ fontSize: 24, fontWeight: 700 }}>Demo</span>
+          <span style={{ fontSize: 24, fontWeight: 700 }}>Kuro Trace</span>
           <p className="muted" style={{ fontSize: 14, lineHeight: 1.6, margin: "12px 0 0" }}>
             Crypto scam research.
             <br />

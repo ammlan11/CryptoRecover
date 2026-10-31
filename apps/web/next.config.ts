@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
-import { securityHeaders } from "@demo/core/headers";
+import { securityHeaders } from "@kurotrace/core/headers";
 
 const dev = process.env.NODE_ENV === "development";
 
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@demo/core", "@demo/db", "@demo/services"],
+  transpilePackages: ["@kurotrace/core", "@kurotrace/db", "@kurotrace/services"],
   serverExternalPackages: ["@node-rs/argon2", "@prisma/client"],
   experimental: {
     // Evidence uploads: up to 10 MB per file, 25 MB per request.

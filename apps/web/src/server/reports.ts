@@ -1,13 +1,13 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
-import { cleanFileName, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_FILES, sniffEvidenceType } from "@demo/core/files";
-import { normalizeIndicator } from "@demo/core/indicators";
-import { generatePublicRef } from "@demo/core/tokens";
-import { prisma, type ContactChannel, type IndicatorKind, type LossBand, type Prisma, type ScamType } from "@demo/db";
-import { decryptFile, decryptText, encryptFile, encryptText } from "@demo/services/crypto";
-import { userEvent } from "@demo/services/audit";
-import { aad, evidenceName, messageText, narrativeOf } from "@demo/services/records";
-import { storage } from "@demo/services/storage";
+import { cleanFileName, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_FILES, sniffEvidenceType } from "@kurotrace/core/files";
+import { normalizeIndicator } from "@kurotrace/core/indicators";
+import { generatePublicRef } from "@kurotrace/core/tokens";
+import { prisma, type ContactChannel, type IndicatorKind, type LossBand, type Prisma, type ScamType } from "@kurotrace/db";
+import { decryptFile, decryptText, encryptFile, encryptText } from "@kurotrace/services/crypto";
+import { userEvent } from "@kurotrace/services/audit";
+import { aad, evidenceName, messageText, narrativeOf } from "@kurotrace/services/records";
+import { storage } from "@kurotrace/services/storage";
 
 export { evidenceName, messageText, narrativeOf };
 

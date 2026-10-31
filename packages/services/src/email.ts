@@ -52,10 +52,10 @@ const footer = `\n\n—\nDemo never asks for payment, a "recovery fee" or your s
 export const templates = {
   verifyEmail: (link: string): Omit<Email, "to"> => ({
     subject: "Confirm your email",
-    text: `Confirm your email address to finish setting up your Demo account:\n\n${link}\n\nThe link works for 24 hours. If you didn't sign up, ignore this email.${footer}`,
+    text: `Confirm your email address to finish setting up your Kuro Trace account:\n\n${link}\n\nThe link works for 24 hours. If you didn't sign up, ignore this email.${footer}`,
   }),
   alreadyRegistered: (loginLink: string, resetLink: string): Omit<Email, "to"> => ({
-    subject: "You already have a Demo account",
+    subject: "You already have a Kuro Trace account",
     text: `Someone tried to create an account with this email, but you already have one.\n\nLog in: ${loginLink}\nForgot your password? ${resetLink}\n\nIf this wasn't you, you can ignore this email.${footer}`,
   }),
   resetPassword: (link: string): Omit<Email, "to"> => ({
@@ -68,11 +68,11 @@ export const templates = {
   }),
   passwordChanged: (): Omit<Email, "to"> => ({
     subject: "Your password was changed",
-    text: `The password on your Demo account was just changed and other devices were signed out.\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password${footer}`,
+    text: `The password on your Kuro Trace account was just changed and other devices were signed out.\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password${footer}`,
   }),
   twoStepChanged: (enabled: boolean): Omit<Email, "to"> => ({
     subject: enabled ? "Two-step sign-in is on" : "Two-step sign-in was turned off",
-    text: `${enabled ? "Two-step sign-in is now on for your Demo account." : "Two-step sign-in was turned off on your Demo account."}\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password${footer}`,
+    text: `${enabled ? "Two-step sign-in is now on for your Kuro Trace account." : "Two-step sign-in was turned off on your Kuro Trace account."}\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password${footer}`,
   }),
   /** Staff replies: the content stays inside the account, never in the email. */
   newMessage: (ref: string): Omit<Email, "to"> => ({

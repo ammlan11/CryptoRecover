@@ -9,7 +9,7 @@ import {
   loadKeyRingFromEnv,
   normalizeEmail,
   type KeyRing,
-} from "@demo/core/crypto";
+} from "@kurotrace/core/crypto";
 
 let ring: KeyRing | null = null;
 let indexKey: Buffer | null = null;

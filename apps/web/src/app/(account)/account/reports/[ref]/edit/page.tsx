@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { MAX_EVIDENCE_FILES } from "@demo/core/files";
+import { MAX_EVIDENCE_FILES } from "@kurotrace/core/files";
 import { ActionForm } from "@/components/account/ActionForm";
 import { ASSET_OPTIONS, CHANNEL_OPTIONS, formatDate, lossLabel, NETWORK_OPTIONS, scamLabel } from "@/lib/labels";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";

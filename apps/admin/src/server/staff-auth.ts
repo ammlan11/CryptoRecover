@@ -1,13 +1,13 @@
 import "server-only";
-import { checkPasswordBreach } from "@demo/core/breach";
-import { checkPasswordPolicy, hashPassword, verifyPassword } from "@demo/core/password";
-import { isIpAllowed, parseAllowList } from "@demo/core/ip";
-import { generateToken, hashToken } from "@demo/core/tokens";
-import { generateTotpSecret, totpUri, verifyTotp } from "@demo/core/totp";
-import { prisma, type StaffRole } from "@demo/db";
-import { audit } from "@demo/services/audit";
-import { decryptText, encryptText } from "@demo/services/crypto";
-import { aad } from "@demo/services/records";
+import { checkPasswordBreach } from "@kurotrace/core/breach";
+import { checkPasswordPolicy, hashPassword, verifyPassword } from "@kurotrace/core/password";
+import { isIpAllowed, parseAllowList } from "@kurotrace/core/ip";
+import { generateToken, hashToken } from "@kurotrace/core/tokens";
+import { generateTotpSecret, totpUri, verifyTotp } from "@kurotrace/core/totp";
+import { prisma, type StaffRole } from "@kurotrace/db";
+import { audit } from "@kurotrace/services/audit";
+import { decryptText, encryptText } from "@kurotrace/services/crypto";
+import { aad } from "@kurotrace/services/records";
 
 export const STAFF_IDLE_MINUTES = 120;
 export const STAFF_ABSOLUTE_HOURS = 12;
@@ -184,7 +184,7 @@ export async function inviteAuthenticator(token: string) {
     secret = generateTotpSecret();
     await prisma.staff.update({ where: { id: invite.staffId }, data: { totpSecretEnc: encryptText(secret, aad.staffTotp(invite.staffId)), totpLastStep: null } });
   }
-  return { username: invite.staff.username, role: invite.staff.role, secret, uri: totpUri(secret, invite.staff.username, "Demo Admin") };
+  return { username: invite.staff.username, role: invite.staff.role, secret, uri: totpUri(secret, invite.staff.username, "Kuro Trace Admin") };
 }
 
 /** Finishes setup: password (policy + breach check) and a working authenticator code. */
