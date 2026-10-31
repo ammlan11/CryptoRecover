@@ -20,7 +20,7 @@
     "@node-rs/argon2": "^2.0.2"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^26",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }
