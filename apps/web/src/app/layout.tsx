@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
-import { headers } from "next/headers";
+import type { Metadata, Viewport } from "next";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+import { JsonLd } from "@/components/JsonLd";
+import { siteUrl, indexable } from "@/lib/site";
 import "./globals.css";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-/** Stays false until launch so staging and previews are never indexed. */
-const indexable = process.env.SITE_INDEXABLE === "true";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -15,28 +14,31 @@ export const metadata: Metadata = {
   description:
     "Share your crypto scam story. Investigators study every report to expose new tactics and warn others. Free and confidential. We never offer recovery.",
   robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
-  alternates: { canonical: "/" },
+  openGraph: { type: "website", siteName: "Demo", locale: "en_GB" },
+  twitter: { card: "summary_large_image" },
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Reading the request makes every page dynamic, which per-request CSP nonces require.
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const organisation = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Demo",
-    url: siteUrl,
-    description: "Crypto scam research: reports are studied by investigators to warn others.",
-  };
+export const viewport: Viewport = { themeColor: "#020b33" };
 
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
         {children}
-        <script
-          type="application/ld+json"
-          nonce={nonce}
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organisation).replace(/</g, "\\u003c") }}
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Organization",
+                "@id": `${siteUrl}/#org`,
+                name: "Demo",
+                url: siteUrl,
+                description: "Crypto scam research: reports are studied by investigators to warn others.",
+              },
+              { "@type": "WebSite", "@id": `${siteUrl}/#website`, name: "Demo", url: siteUrl, publisher: { "@id": `${siteUrl}/#org` } },
+            ],
+          }}
         />
       </body>
     </html>

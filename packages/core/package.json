@@ -10,7 +10,9 @@
     "./tokens": "./src/tokens.ts",
     "./audit": "./src/audit.ts",
     "./ip": "./src/ip.ts",
-    "./headers": "./src/headers.ts"
+    "./headers": "./src/headers.ts",
+    "./indicators": "./src/indicators.ts",
+    "./rate-limit": "./src/rate-limit.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
