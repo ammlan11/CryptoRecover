@@ -12,7 +12,9 @@
     "./ip": "./src/ip.ts",
     "./headers": "./src/headers.ts",
     "./indicators": "./src/indicators.ts",
-    "./rate-limit": "./src/rate-limit.ts"
+    "./rate-limit": "./src/rate-limit.ts",
+    "./totp": "./src/totp.ts",
+    "./files": "./src/files.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

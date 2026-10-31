@@ -23,6 +23,8 @@ model User {
   passwordHash    String    @db.VarChar(255) // argon2id
   emailVerifiedAt DateTime?
   totpSecretEnc   String?   @db.Text
+  totpEnabledAt   DateTime?
+  totpLastStep    Int? // last accepted TOTP time step: refuses replayed codes
   nameEnc         String?   @db.Text
   country         String?   @db.Char(2) // ISO 3166-1 alpha-2
   locale          String    @default("en") @db.VarChar(10)
@@ -36,6 +38,36 @@ model User {
   reports  Report[]
   issues   Issue[]
   watches  IndicatorWatch[]
+
+  recoveryCodes   UserRecoveryCode[]
+  loginChallenges LoginChallenge[]
+}
+
+/// Single-use backup codes for two-step sign-in; only hashes are stored.
+model UserRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    @db.Char(64)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+}
+
+/// Short-lived step between a correct password and a correct authenticator code.
+model LoginChallenge {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique @db.Char(64)
+  userId    String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model UserSession {
@@ -59,6 +91,7 @@ model EmailToken {
   tokenHash String         @unique @db.Char(64)
   emailHash String         @db.Char(64)
   purpose   EmailTokenPurpose
+  leadId    String? // CONTINUE_REPORT links back to the lead that started the report
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime       @default(now())
@@ -86,6 +119,7 @@ model Report {
   lossBand         LossBand?
   occurredAt       DateTime?
   narrativeEnc     String?       @db.MediumText
+  lastStep         Int           @default(1) // furthest step of the report form reached
   assignedStaffId  String?
   researchConsentAt   DateTime? // required before status leaves DRAFT
   publicAlertConsentAt DateTime? // optional: may publish the indicators, never the reporter
@@ -157,7 +191,8 @@ model ReportPayment {
   sentAt    DateTime?
   createdAt DateTime @default(now())
 
-  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  report     Report            @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  indicators ReportIndicator[]
 
   @@index([reportId])
 }
@@ -173,10 +208,12 @@ model ReportIndicator {
   chain           String?       @db.VarChar(32)
   confirmedAt     DateTime? // set by investigators; only confirmed indicators are public
   confirmedById   String?
+  paymentId       String? // set when the indicator came from a payment (wallet, tx hash)
   createdAt       DateTime      @default(now())
 
-  report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  confirmedBy Staff? @relation(fields: [confirmedById], references: [id], onDelete: SetNull)
+  report      Report         @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  confirmedBy Staff?         @relation(fields: [confirmedById], references: [id], onDelete: SetNull)
+  payment     ReportPayment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   @@index([kind, normalizedValue(length: 191)])
   @@index([reportId])

@@ -80,6 +80,40 @@ export function decryptField(token: string, ring: KeyRing, aad?: string): string
   }
 }
 
+/**
+ * Binary variant for evidence files. Layout: [1 byte keyId length][keyId][12 IV][16 tag][ciphertext].
+ * Files are encrypted before they reach object storage, on top of the bucket's own encryption.
+ */
+export function encryptBytes(plain: Buffer, ring: KeyRing, aad: string): Buffer {
+  const key = ring.keys.get(ring.primaryId);
+  if (!key) throw new CryptoConfigError("Primary key missing from key ring");
+  const iv = randomBytes(IV_BYTES);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  cipher.setAAD(Buffer.from(aad, "utf8"));
+  const ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+  const id = Buffer.from(ring.primaryId, "utf8");
+  return Buffer.concat([Buffer.from([id.length]), id, iv, cipher.getAuthTag(), ciphertext]);
+}
+
+export function decryptBytes(blob: Buffer, ring: KeyRing, aad: string): Buffer {
+  const idLen = blob[0];
+  if (idLen === undefined || idLen < 1 || blob.length < 1 + idLen + IV_BYTES + 16) throw new DecryptionError("Malformed encrypted file");
+  const keyId = blob.subarray(1, 1 + idLen).toString("utf8");
+  const key = ring.keys.get(keyId);
+  if (!key) throw new DecryptionError(`Unknown key id "${keyId}"`);
+  let offset = 1 + idLen;
+  const iv = blob.subarray(offset, (offset += IV_BYTES));
+  const tag = blob.subarray(offset, (offset += 16));
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAAD(Buffer.from(aad, "utf8"));
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(blob.subarray(offset)), decipher.final()]);
+  } catch {
+    throw new DecryptionError("Encrypted file failed authentication");
+  }
+}
+
 /** True when a value was encrypted with an older key and should be re-encrypted. */
 export function needsReEncryption(token: string, ring: KeyRing): boolean {
   return token.split(".")[1] !== ring.primaryId;
