@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { startReport, type FormState } from "@/app/actions";
 import { BotCheck } from "@/components/forms/BotCheck";
+import { announceLead } from "@/components/ads/AdTags";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS, type ScamTypeValue } from "@/lib/options";
 
 const initial: FormState = { status: "idle" };
@@ -12,6 +13,8 @@ const initial: FormState = { status: "idle" };
 export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { variant: "hero" | "campaign"; defaultScamType?: ScamTypeValue }) {
   const [state, action, pending] = useActionState(startReport, initial);
   const id = variant;
+  const eventId = state.status === "success" ? state.eventId : undefined;
+  useEffect(() => announceLead(eventId), [eventId]);
 
   if (state.status === "success") {
     return (

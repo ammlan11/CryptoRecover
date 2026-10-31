@@ -320,3 +320,9 @@ img, svg { max-width: 100%; }
 /* Bot check: invisible unless Cloudflare needs a click */
 .bot-check { flex-basis: 100%; min-width: 0; }
 .bot-check:empty { display: none; }
+
+/* Ad-cookie question on landing pages */
+.consent { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 60; max-width: 720px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 18px 20px; border-radius: 16px; background: var(--navy-800, #0a1446); border: 1px solid var(--line-dark, #1e2b66); box-shadow: 0 18px 50px rgba(0,0,0,.35); color: #fff; }
+.consent p { flex: 1 1 320px; margin: 0; font-size: 14px; line-height: 1.5; color: var(--on-dark-muted, #b9c3e6); }
+.consent p a { color: #fff; text-decoration: underline; }
+.consent-actions { display: flex; gap: 10px; }

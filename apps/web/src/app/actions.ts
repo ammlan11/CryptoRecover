@@ -15,12 +15,13 @@ import { ATTRIBUTION_COOKIE, parseAttribution } from "@/lib/attribution";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";
 import { clientIp } from "@/lib/request";
 import { BOT_CHECK_FAILED, passesBotCheck } from "@/lib/bot-check";
+import { sendLeadConversion } from "@/server/conversions";
 import { protectEmail } from "@kurotrace/services/crypto";
 import { sendContinueReportLink } from "@/server/accounts";
 
 export type FormState =
   | { status: "idle" }
-  | { status: "success"; message: string }
+  | { status: "success"; message: string; eventId?: string }
   | { status: "error"; message: string; field?: string };
 
 export type CheckState =
@@ -110,7 +111,11 @@ export async function startReport(_prev: FormState, form: FormData): Promise<For
   try {
     const leadId = await saveLead(parsed.data.source, parsed.data.email, { scamType: parsed.data.scamType, lossBand: parsed.data.lossBand });
     await sendContinueReportLink(parsed.data.email, leadId);
-    return success;
+    // Same id for the browser pixel and the server-side event, so the lead is counted once.
+    const eventId = `lead-${leadId}`;
+    const attr = await attribution();
+    await sendLeadConversion({ eventId, email: parsed.data.email, fbclid: attr.fbclid, landing: attr.landing });
+    return { ...success, eventId };
   } catch (error) {
     console.error("startReport failed", error instanceof Error ? error.message : error);
     return { status: "error", message: GENERIC_ERROR };
