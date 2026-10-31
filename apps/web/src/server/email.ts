@@ -6,6 +6,7 @@ import { siteUrl } from "@/lib/site";
  * - "postmark": production (POSTMARK_SERVER_TOKEN, EMAIL_FROM)
  * - "log":      development only; prints the message, including links, to the server log
  * - "memory":   tests; messages collect in `outbox`
+ * - "none":     end-to-end tests; messages are dropped
  */
 export interface Email {
   to: string;
@@ -19,6 +20,10 @@ export async function sendEmail(email: Email): Promise<void> {
   const provider = process.env.EMAIL_PROVIDER ?? (process.env.NODE_ENV === "production" ? "postmark" : "log");
   if (provider === "memory") {
     outbox.push(email);
+    return;
+  }
+  if (provider === "none") {
+    // End-to-end tests: drop the message. Never logs links, so it is safe on any server.
     return;
   }
   if (provider === "log") {

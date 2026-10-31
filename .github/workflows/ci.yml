@@ -70,3 +70,49 @@ jobs:
             --exit-code
       - name: Integration tests (accounts, reports, evidence, audit chain)
         run: npm run test:integration -w @demo/web
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: demo_e2e
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/demo_e2e
+      FIELD_ENCRYPTION_KEYS: k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      BLIND_INDEX_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      EMAIL_PROVIDER: none
+      EVIDENCE_STORAGE: local
+      ALLOW_LOCAL_EVIDENCE: "true"
+      EVIDENCE_LOCAL_DIR: /tmp/evidence
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npx -w @demo/db prisma migrate deploy
+      - run: npm run build -w @demo/web
+      - name: Start the production server
+        run: |
+          (cd apps/web && npx next start -p 3000 > /tmp/web.log 2>&1 &)
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:3000/login && break; sleep 1; done
+      - run: npx -w @demo/web playwright install --with-deps chromium
+      - name: Browser end-to-end test
+        env:
+          BASE_URL: http://localhost:3000
+          MYSQL: mysql -h127.0.0.1 -uroot -proot demo_e2e
+        run: npm run test:e2e -w @demo/web
+      - name: Server log on failure
+        if: failure()
+        run: tail -100 /tmp/web.log
