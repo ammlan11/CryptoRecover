@@ -6,7 +6,7 @@ const dev = process.env.NODE_ENV === "development";
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@demo/core", "@demo/db"],
+  transpilePackages: ["@demo/core", "@demo/db", "@demo/services"],
   serverExternalPackages: ["@node-rs/argon2", "@prisma/client"],
   experimental: {
     // Evidence uploads: up to 10 MB per file, 25 MB per request.

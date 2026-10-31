@@ -14,7 +14,7 @@ import { prisma, type IndicatorKind, type LeadSource } from "@demo/db";
 import { ATTRIBUTION_COOKIE, parseAttribution } from "@/lib/attribution";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";
 import { clientIp } from "@/lib/request";
-import { protectEmail } from "@/lib/server-crypto";
+import { protectEmail } from "@demo/services/crypto";
 import { sendContinueReportLink } from "@/server/accounts";
 
 export type FormState =

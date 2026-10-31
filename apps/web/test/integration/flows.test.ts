@@ -19,12 +19,12 @@ process.env.EVIDENCE_LOCAL_DIR = mkdtempSync(path.join(tmpdir(), "evidence-"));
 let breachedSuffixes = "";
 vi.stubGlobal("fetch", async () => ({ ok: true, text: async () => breachedSuffixes }));
 
-const { outbox } = await import("@/server/email");
+const { outbox } = await import("@demo/services/email");
 const accounts = await import("@/server/accounts");
 const sessions = await import("@/server/sessions");
 const reports = await import("@/server/reports");
-const { storage } = await import("@/server/storage");
-const { protectEmail } = await import("@/lib/server-crypto");
+const { storage } = await import("@demo/services/storage");
+const { protectEmail } = await import("@demo/services/crypto");
 
 const PASSWORD = "correct horse battery staple";
 const linkToken = (text: string) => /token=([A-Za-z0-9_-]+)/.exec(text)?.[1] ?? "";

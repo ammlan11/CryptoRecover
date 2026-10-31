@@ -4,9 +4,12 @@ import { cleanFileName, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_FILES, sniffEvidenceTyp
 import { normalizeIndicator } from "@demo/core/indicators";
 import { generatePublicRef } from "@demo/core/tokens";
 import { prisma, type ContactChannel, type IndicatorKind, type LossBand, type Prisma, type ScamType } from "@demo/db";
-import { decryptFile, decryptText, encryptFile, encryptText } from "@/lib/server-crypto";
-import { userEvent } from "./audit";
-import { storage } from "./storage";
+import { decryptFile, decryptText, encryptFile, encryptText } from "@demo/services/crypto";
+import { userEvent } from "@demo/services/audit";
+import { aad, evidenceName, messageText, narrativeOf } from "@demo/services/records";
+import { storage } from "@demo/services/storage";
+
+export { evidenceName, messageText, narrativeOf };
 
 export const MAX_NARRATIVE = 20_000;
 export const MAX_MESSAGE = 5_000;
@@ -15,10 +18,10 @@ export const MAX_OPEN_DRAFTS = 5;
 
 export class ReportError extends Error {}
 
-const narrativeAad = (id: string) => `report:${id}:narrative`;
-const messageAad = (reportId: string) => `message:${reportId}`;
-const fileAad = (key: string) => `evidence:${key}`;
-const fileNameAad = (key: string) => `evidence:${key}:name`;
+const narrativeAad = aad.narrative;
+const messageAad = aad.message;
+const fileAad = aad.file;
+const fileNameAad = aad.fileName;
 
 const fullInclude = {
   payments: { orderBy: { createdAt: "asc" }, include: { indicators: true } },
@@ -192,13 +195,7 @@ export async function readUserEvidence(userId: string, publicRef: string, eviden
   return { bytes, mimeType: file.mimeType, name: decryptText(file.fileNameEnc, fileNameAad(file.storageKey)) };
 }
 
-export function evidenceName(file: { storageKey: string; fileNameEnc: string }) {
-  return decryptText(file.fileNameEnc, fileNameAad(file.storageKey));
-}
 
-export function narrativeOf(report: { id: string; narrativeEnc: string | null }) {
-  return report.narrativeEnc ? decryptText(report.narrativeEnc, narrativeAad(report.id)) : "";
-}
 
 /** Sends the report for review. Research consent and a verified email are required. */
 export async function submitReport(userId: string, publicRef: string, input: { researchConsent: boolean; publicAlertConsent: boolean }) {
@@ -225,9 +222,6 @@ export async function addUserMessage(userId: string, publicRef: string, body: st
   await prisma.message.create({ data: { reportId: report.id, authorType: "USER", bodyEnc: encryptText(text, messageAad(report.id)) } });
 }
 
-export function messageText(message: { reportId: string; bodyEnc: string }) {
-  return decryptText(message.bodyEnc, messageAad(message.reportId));
-}
 
 /** Marks staff messages as read when the owner opens the report. */
 export async function markStaffMessagesRead(reportId: string) {
@@ -247,7 +241,7 @@ export async function createIssue(userId: string | null, category: "SITE_PROBLEM
   const text = body.trim();
   if (text.length < 5) throw new ReportError("Tell us a little more so we can help.");
   if (text.length > MAX_MESSAGE) throw new ReportError(`Please keep it under ${MAX_MESSAGE.toLocaleString()} characters.`);
-  const issue = await prisma.issue.create({ data: { userId, category, bodyEnc: encryptText(text, "issue") } });
+  const issue = await prisma.issue.create({ data: { userId, category, bodyEnc: encryptText(text, aad.issue()) } });
   if (userId) await userEvent(userId, "issue.created", "issue", issue.id, { category });
   return issue;
 }

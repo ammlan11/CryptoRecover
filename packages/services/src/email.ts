@@ -1,5 +1,5 @@
 import "server-only";
-import { siteUrl } from "@/lib/site";
+import { siteUrl } from "./site";
 
 /**
  * Outgoing email. Providers:

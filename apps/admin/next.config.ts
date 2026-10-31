@@ -6,7 +6,7 @@ const dev = process.env.NODE_ENV === "development";
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@demo/core", "@demo/db"],
+  transpilePackages: ["@demo/core", "@demo/db", "@demo/services"],
   serverExternalPackages: ["@node-rs/argon2", "@prisma/client"],
   async headers() {
     const headers = securityHeaders({ admin: true, dev });

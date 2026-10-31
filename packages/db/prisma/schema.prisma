@@ -376,6 +376,8 @@ model Staff {
   role          StaffRole
   organisation  String?   @db.VarChar(120) // e.g. the investigation firm
   totpSecretEnc String?   @db.Text
+  totpLastStep  Int? // last accepted code's time step: refuses replays
+  activatedAt   DateTime? // set when the person finishes their invite (password + authenticator)
   allowedIps    String?   @db.Text // optional per-person allow-list, on top of the global one
   failedLogins  Int       @default(0)
   lockedUntil   DateTime?
@@ -384,6 +386,7 @@ model Staff {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  invites StaffInvite[]
   sessions           StaffSession[]
   webauthnKeys       WebAuthnKey[]
   assignedReports    Report[]
@@ -397,6 +400,21 @@ enum StaffRole {
   REVIEWER
   INVESTIGATOR // external investigation firm: assigned cases only, contact details hidden
   VIEWER
+}
+
+/// One-time setup link the owner gives a new staff member (48 hours).
+model StaffInvite {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique @db.Char(64)
+  staffId     String
+  createdById String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
 }
 
 model WebAuthnKey {
