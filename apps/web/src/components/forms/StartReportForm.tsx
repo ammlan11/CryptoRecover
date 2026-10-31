@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { startReport, type FormState } from "@/app/actions";
+import { BotCheck } from "@/components/forms/BotCheck";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS, type ScamTypeValue } from "@/lib/options";
 
 const initial: FormState = { status: "idle" };
@@ -61,6 +62,7 @@ export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { varia
             {pending ? "Saving…" : "Start my report →"}
           </button>
         </div>
+        <BotCheck action="lead" resetOn={state} />
         {error && <p id="hero-error" className="form-msg err" role="alert">{error.message}</p>}
         <p className="fine">
           About 5 minutes · We don&rsquo;t recover money and never charge · <Link href="/privacy">Privacy notice</Link>
@@ -100,6 +102,7 @@ export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { varia
           I agree my report is used for scam research, as described in the <Link href="/privacy" style={{ textDecoration: "underline" }}>privacy notice</Link>.
         </span>
       </label>
+      <BotCheck action="lead" resetOn={state} />
       {error && <p className="form-msg err" role="alert" style={{ margin: 0 }}>{error.message}</p>}
       <button type="submit" className="btn btn-navy" disabled={pending} style={{ minHeight: 52, width: "100%" }}>
         {pending ? "Saving…" : "Continue →"}

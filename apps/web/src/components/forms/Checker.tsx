@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { checkIndicator, watchIndicator, type CheckState, type FormState } from "@/app/actions";
+import { BotCheck } from "@/components/forms/BotCheck";
 
 const KIND_LABEL: Record<string, string> = {
   WALLET: "wallet",
@@ -26,6 +27,7 @@ function WatchForm({ kind, value }: { kind: string; value: string }) {
       <label htmlFor="watch-email" className="sr-only">Email me if this is reported again</label>
       <input id="watch-email" name="email" type="email" autoComplete="email" required placeholder="Email me if it's reported again" />
       <button type="submit" className="btn btn-line-w" disabled={pending}>{pending ? "…" : "Watch"}</button>
+      <BotCheck action="watch" resetOn={state} />
       {state.status === "error" && <p className="form-msg err" role="alert" style={{ flexBasis: "100%" }}>{state.message}</p>}
     </form>
   );

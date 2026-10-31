@@ -95,6 +95,9 @@ jobs:
       ALLOW_LOCAL_EVIDENCE: "true"
       EVIDENCE_LOCAL_DIR: /tmp/evidence
       NEXT_TELEMETRY_DISABLED: "1"
+      # Cloudflare's published always-pass test keys: exercises the real bot-check flow.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+      TURNSTILE_SECRET_KEY: 1x0000000000000000000000000000000AA
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

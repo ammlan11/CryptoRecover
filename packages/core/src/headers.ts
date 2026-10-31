@@ -10,6 +10,8 @@ export interface CspOptions {
   extraScriptSrc?: string[];
   extraConnectSrc?: string[];
   extraImgSrc?: string[];
+  /** Third-party frames, e.g. the bot-check widget. Default: no frames at all. */
+  extraFrameSrc?: string[];
 }
 
 export function generateNonce(): string {
@@ -32,7 +34,7 @@ export function buildCsp(opts: CspOptions): string {
     "img-src": ["'self'", "data:", "blob:", ...(opts.extraImgSrc ?? [])],
     "font-src": ["'self'"],
     "connect-src": connect,
-    "frame-src": ["'none'"],
+    "frame-src": opts.extraFrameSrc?.length ? opts.extraFrameSrc : ["'none'"],
     "frame-ancestors": ["'none'"],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
