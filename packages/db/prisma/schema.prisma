@@ -1,0 +1,415 @@
+// Demo — crypto scam research platform
+//
+// Conventions
+// - Columns ending in `Enc` hold AES-256-GCM ciphertext from @demo/core/crypto, never plain text.
+// - Columns ending in `Hash` hold a blind index (HMAC) or a token hash, used for lookups.
+// - Public users and staff live in separate tables: a bug in user sign-up can never create an admin.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Public users ──────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  emailHash       String    @unique @db.Char(64) // blindIndex(normalizeEmail(email), "user.email")
+  emailEnc        String    @db.Text
+  passwordHash    String    @db.VarChar(255) // argon2id
+  emailVerifiedAt DateTime?
+  totpSecretEnc   String?   @db.Text
+  nameEnc         String?   @db.Text
+  country         String?   @db.Char(2) // ISO 3166-1 alpha-2
+  locale          String    @default("en") @db.VarChar(10)
+  failedLogins    Int       @default(0)
+  lockedUntil     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime? // set when the user asks us to erase their data
+
+  sessions UserSession[]
+  reports  Report[]
+  issues   Issue[]
+  watches  IndicatorWatch[]
+}
+
+model UserSession {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique @db.Char(64) // sha256 of the cookie token
+  userId     String
+  ipHash     String?  @db.Char(64)
+  userAgent  String?  @db.VarChar(255)
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailToken {
+  id        String         @id @default(cuid())
+  tokenHash String         @unique @db.Char(64)
+  emailHash String         @db.Char(64)
+  purpose   EmailTokenPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  @@index([emailHash])
+}
+
+enum EmailTokenPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+  CONTINUE_REPORT
+}
+
+// ─── Reports ───────────────────────────────────────────────────
+
+model Report {
+  id               String        @id @default(cuid())
+  publicRef        String        @unique @db.VarChar(12) // e.g. DM-7K2Q9
+  userId           String?
+  status           ReportStatus  @default(DRAFT)
+  scamType         ScamType
+  scamPattern      String?       @db.VarChar(80) // set by investigators, e.g. "fee-to-withdraw"
+  contactChannel   ContactChannel?
+  country          String?       @db.Char(2)
+  lossBand         LossBand?
+  occurredAt       DateTime?
+  narrativeEnc     String?       @db.MediumText
+  assignedStaffId  String?
+  researchConsentAt   DateTime? // required before status leaves DRAFT
+  publicAlertConsentAt DateTime? // optional: may publish the indicators, never the reporter
+  submittedAt      DateTime?
+  closedAt         DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignedStaff Staff?            @relation(fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  payments      ReportPayment[]
+  indicators    ReportIndicator[]
+  evidence      Evidence[]
+  messages      Message[]
+  notes         InternalNote[]
+  lead          Lead?
+
+  @@index([status, createdAt])
+  @@index([scamType])
+  @@index([assignedStaffId])
+  @@index([userId])
+}
+
+enum ReportStatus {
+  DRAFT
+  RECEIVED
+  IN_HOUSE_REVIEW
+  INFO_NEEDED
+  WITH_INVESTIGATORS
+  CLOSED
+}
+
+enum ScamType {
+  PIG_BUTCHERING
+  FAKE_TRADING_APP
+  MESSAGING_BROKER
+  RECOVERY_OFFER
+  WALLET_DRAINER
+  IMPERSONATION
+  OTHER
+  UNSURE
+}
+
+enum ContactChannel {
+  TELEGRAM
+  WHATSAPP
+  SOCIAL_MEDIA
+  DATING_APP
+  PHONE
+  EMAIL
+  WEBSITE_AD
+  OTHER
+}
+
+enum LossBand {
+  NONE
+  UNDER_1K
+  FROM_1K_TO_10K
+  FROM_10K_TO_50K
+  OVER_50K
+}
+
+model ReportPayment {
+  id        String   @id @default(cuid())
+  reportId  String
+  amount    Decimal? @db.Decimal(28, 8)
+  asset     String   @db.VarChar(16) // USDT, BTC, USD, EUR…
+  network   String?  @db.VarChar(32) // TRON, Ethereum, Bitcoin…
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+/// Wallets, transaction hashes, domains and handles named in a report.
+/// These describe the scam, not the reporter, and power the public checker once confirmed.
+model ReportIndicator {
+  id              String        @id @default(cuid())
+  reportId        String
+  kind            IndicatorKind
+  value           String        @db.VarChar(512)
+  normalizedValue String        @db.VarChar(512)
+  chain           String?       @db.VarChar(32)
+  confirmedAt     DateTime? // set by investigators; only confirmed indicators are public
+  confirmedById   String?
+  createdAt       DateTime      @default(now())
+
+  report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  confirmedBy Staff? @relation(fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@index([kind, normalizedValue(length: 191)])
+  @@index([reportId])
+}
+
+enum IndicatorKind {
+  WALLET
+  TX_HASH
+  DOMAIN
+  TELEGRAM
+  WHATSAPP
+  PHONE
+  EMAIL
+  APP
+  OTHER
+}
+
+/// "Email me if this address is reported again" from the public checker.
+model IndicatorWatch {
+  id              String        @id @default(cuid())
+  kind            IndicatorKind
+  normalizedValue String        @db.VarChar(512)
+  emailHash       String        @db.Char(64)
+  emailEnc        String        @db.Text
+  userId          String?
+  createdAt       DateTime      @default(now())
+  unsubscribedAt  DateTime?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([kind, normalizedValue(length: 191)])
+}
+
+model Evidence {
+  id         String     @id @default(cuid())
+  reportId   String
+  storageKey String     @unique @db.VarChar(255) // private bucket object key, never a public URL
+  mimeType   String     @db.VarChar(100)
+  sizeBytes  Int
+  sha256     String     @db.Char(64)
+  fileNameEnc String    @db.Text
+  scanStatus ScanStatus @default(PENDING)
+  createdAt  DateTime   @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+enum ScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  FAILED
+}
+
+model Message {
+  id         String     @id @default(cuid())
+  reportId   String
+  authorType AuthorType
+  staffId    String?
+  bodyEnc    String     @db.Text
+  readAt     DateTime?
+  createdAt  DateTime   @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  staff  Staff? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
+  @@index([reportId, createdAt])
+}
+
+enum AuthorType {
+  USER
+  STAFF
+}
+
+/// Staff-only notes on a report; never shown to the reporter.
+model InternalNote {
+  id        String   @id @default(cuid())
+  reportId  String
+  staffId   String
+  bodyEnc   String   @db.Text
+  createdAt DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  staff  Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+model Issue {
+  id        String        @id @default(cuid())
+  userId    String?
+  category  IssueCategory
+  bodyEnc   String        @db.Text
+  status    IssueStatus   @default(OPEN)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+enum IssueCategory {
+  SITE_PROBLEM
+  COMPLAINT
+  DATA_REQUEST
+  OTHER
+}
+
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+// ─── Leads (ads and on-page capture) ───────────────────────────
+
+model Lead {
+  id               String     @id @default(cuid())
+  source           LeadSource
+  emailHash        String     @db.Char(64)
+  emailEnc         String     @db.Text
+  scamType         ScamType?
+  lossBand         LossBand?
+  country          String?    @db.Char(2)
+  landingPage      String?    @db.VarChar(255)
+  utmSource        String?    @db.VarChar(100)
+  utmMedium        String?    @db.VarChar(100)
+  utmCampaign      String?    @db.VarChar(150)
+  utmContent       String?    @db.VarChar(150)
+  utmTerm          String?    @db.VarChar(150)
+  gclid            String?    @db.VarChar(255)
+  fbclid           String?    @db.VarChar(255)
+  marketingConsent Boolean    @default(false)
+  convertedReportId String?   @unique
+  createdAt        DateTime   @default(now())
+
+  convertedReport Report? @relation(fields: [convertedReportId], references: [id], onDelete: SetNull)
+
+  @@index([source, createdAt])
+  @@index([emailHash])
+  @@index([utmCampaign])
+}
+
+enum LeadSource {
+  HERO_FORM
+  CAMPAIGN_FORM
+  CHECKER_WATCH
+  NEWSLETTER
+}
+
+// ─── Staff (admin terminal) ────────────────────────────────────
+
+model Staff {
+  id            String    @id @default(cuid())
+  username      String    @unique @db.VarChar(64)
+  passwordHash  String    @db.VarChar(255)
+  role          StaffRole
+  organisation  String?   @db.VarChar(120) // e.g. the investigation firm
+  totpSecretEnc String?   @db.Text
+  allowedIps    String?   @db.Text // optional per-person allow-list, on top of the global one
+  failedLogins  Int       @default(0)
+  lockedUntil   DateTime?
+  disabledAt    DateTime?
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions           StaffSession[]
+  webauthnKeys       WebAuthnKey[]
+  assignedReports    Report[]
+  confirmedIndicators ReportIndicator[]
+  messages           Message[]
+  notes              InternalNote[]
+}
+
+enum StaffRole {
+  OWNER
+  REVIEWER
+  INVESTIGATOR // external investigation firm: assigned cases only, contact details hidden
+  VIEWER
+}
+
+model WebAuthnKey {
+  id           String    @id @default(cuid())
+  staffId      String
+  credentialId String    @unique @db.VarChar(512)
+  publicKey    Bytes
+  counter      BigInt    @default(0)
+  label        String    @db.VarChar(64)
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+}
+
+model StaffSession {
+  id                String    @id @default(cuid())
+  tokenHash         String    @unique @db.Char(64)
+  staffId           String
+  ip                String    @db.VarChar(45)
+  userAgent         String?   @db.VarChar(255)
+  secondFactorAt    DateTime? // null until TOTP or a hardware key is verified
+  reauthenticatedAt DateTime? // required again before exports and deletes
+  createdAt         DateTime  @default(now())
+  lastSeenAt        DateTime  @default(now())
+  expiresAt         DateTime
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+}
+
+/// Append-only. Each row carries the previous row's hash (see @demo/core/audit).
+/// The app's database user should have INSERT and SELECT on this table, never UPDATE or DELETE.
+model AuditLog {
+  id        BigInt   @id @default(autoincrement())
+  actorType String   @db.VarChar(16)
+  actorId   String?  @db.VarChar(64)
+  action    String   @db.VarChar(64)
+  entity    String   @db.VarChar(64)
+  entityId  String?  @db.VarChar(64)
+  ip        String?  @db.VarChar(45)
+  detail    Json?
+  at        DateTime @default(now())
+  prevHash  String?  @db.Char(64)
+  hash      String   @unique @db.Char(64)
+
+  @@index([entity, entityId])
+  @@index([actorType, actorId])
+  @@index([at])
+}

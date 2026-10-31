@@ -1,0 +1,25 @@
+{
+  "name": "demo-platform",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.18"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.0"
+  },
+  "scripts": {
+    "dev:web": "npm run dev -w @demo/web",
+    "dev:admin": "npm run dev -w @demo/admin",
+    "build": "npm run db:generate && npm run build -w @demo/web && npm run build -w @demo/admin",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:generate": "npm run generate -w @demo/db",
+    "db:migrate": "npm run migrate -w @demo/db"
+  }
+}
