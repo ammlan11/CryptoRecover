@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import { prisma } from "@demo/db";
 import { totpUri } from "@demo/core/totp";
 import { ActionForm } from "@/components/account/ActionForm";
-import { decryptText } from "@/lib/server-crypto";
+import { decryptText } from "@demo/services/crypto";
 import { requireUser } from "@/lib/session";
 import { beginTwoStepSetup, userEmail } from "@/server/accounts";
 import { confirmTwoStepAction } from "../../actions";

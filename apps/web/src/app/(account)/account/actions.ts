@@ -9,7 +9,7 @@ import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";
 import { clientIp } from "@/lib/request";
 import { requireUser, signOut } from "@/lib/session";
 import { changePassword, confirmTwoStep, deleteAccount, disableTwoStep, sendVerification, userEmail } from "@/server/accounts";
-import { sendEmail, templates } from "@/server/email";
+import { sendEmail, templates } from "@demo/services/email";
 import {
   addEvidence,
   addPayment,

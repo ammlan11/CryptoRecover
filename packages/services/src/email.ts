@@ -1,5 +1,5 @@
 import "server-only";
-import { siteUrl } from "@/lib/site";
+import { siteUrl } from "./site";
 
 /**
  * Outgoing email. Providers:
@@ -73,6 +73,19 @@ export const templates = {
   twoStepChanged: (enabled: boolean): Omit<Email, "to"> => ({
     subject: enabled ? "Two-step sign-in is on" : "Two-step sign-in was turned off",
     text: `${enabled ? "Two-step sign-in is now on for your Demo account." : "Two-step sign-in was turned off on your Demo account."}\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password${footer}`,
+  }),
+  /** Staff replies: the content stays inside the account, never in the email. */
+  newMessage: (ref: string): Omit<Email, "to"> => ({
+    subject: `New message about report ${ref}`,
+    text: `Our research team sent you a message about report ${ref}. Log in to read it:\n\n${siteUrl}/account/reports/${ref}${footer}`,
+  }),
+  infoNeeded: (ref: string): Omit<Email, "to"> => ({
+    subject: `We have a question about report ${ref}`,
+    text: `Our research team needs a little more detail on report ${ref}. Log in to see the question:\n\n${siteUrl}/account/reports/${ref}${footer}`,
+  }),
+  reportClosed: (ref: string): Omit<Email, "to"> => ({
+    subject: `Report ${ref} is closed`,
+    text: `Thank you for report ${ref}. Our team has finished reviewing it, and what it showed now helps warn others. You can still read it in your account:\n\n${siteUrl}/account/reports/${ref}${footer}`,
   }),
   reportReceived: (ref: string): Omit<Email, "to"> => ({
     subject: `Report ${ref} received`,
