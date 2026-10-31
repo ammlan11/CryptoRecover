@@ -39,8 +39,8 @@ npm run build
 
 ## Build phases
 
-1. **Foundation** — monorepo, schema, security core, headers, CI *(this phase)*
-2. **Public site** — approved home page design, scam pages, guides, checker, campaign landing pages, SEO
+1. **Foundation** — monorepo, schema, security core, headers, CI *(done)*
+2. **Public site** — approved home page design with lead capture, scam playbooks, checker, campaign landing pages (`/lp/broker-scams`, `/lp/fake-apps`, `/lp/report`), SEO *(done)*
 3. **User terminal** — sign-up with 2FA, report form, evidence upload, messages, research consent
 4. **Admin terminal** — staff sign-in with hardware key or TOTP, reports queue, investigator role, audit log
 5. **Hardening and launch** — KMS keys, penetration test, backups, ad pixels and conversions
