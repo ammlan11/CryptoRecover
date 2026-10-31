@@ -70,7 +70,7 @@ jobs:
             --exit-code
       - name: Integration tests (accounts, reports, evidence, audit chain)
         run: npm run test:integration -w @demo/web
-      - name: Integration tests (admin: staff sign-in, roles, cases, exports)
+      - name: Integration tests (admin — staff sign-in, roles, cases, exports)
         run: npm run test:integration -w @demo/admin
 
   e2e:
