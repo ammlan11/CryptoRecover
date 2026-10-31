@@ -116,3 +116,6 @@ tr:hover td { background: #fafbfe; }
 .auth-card h1 { margin: 0; font-size: 26px; font-weight: 400; }
 .auth-tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; color: var(--muted); margin: 6px 0 22px; }
 .qr { width: 200px; height: 200px; border: 1px solid var(--card-line); border-radius: 8px; overflow: hidden; margin: 8px 0; }
+
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--card-line); }

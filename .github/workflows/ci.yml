@@ -139,6 +139,7 @@ jobs:
         env:
           ADMIN_ALLOWED_IPS: 127.0.0.1
           TRUSTED_IP_HEADER: x-forwarded-for
+          ADMIN_URL: http://localhost:3001
         run: |
           (cd apps/web && npx next start -p 3000 > /tmp/web.log 2>&1 &)
           (cd apps/admin && npx next start -p 3001 > /tmp/admin.log 2>&1 &)
