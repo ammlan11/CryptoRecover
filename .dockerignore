@@ -1,0 +1,8 @@
+.git
+**/node_modules
+**/.next
+**/.evidence
+.env
+.env.*
+!.env.example
+deploy/backups

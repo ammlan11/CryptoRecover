@@ -92,6 +92,28 @@ jobs:
         run: npm run test:integration -w @kurotrace/web
       - name: Integration tests (admin — staff sign-in, roles, cases, exports)
         run: npm run test:integration -w @kurotrace/admin
+      - name: Backup and restore drill (encrypted dump → restore → compare)
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: demo_test
+          BACKUP_DIR: /tmp/backups
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq age > /dev/null
+          age-keygen -o /tmp/backup.key 2> /dev/null
+          export BACKUP_AGE_RECIPIENT="$(age-keygen -y /tmp/backup.key)"
+          deploy/backup.sh
+          f=$(ls /tmp/backups/*.sql.gz.age)
+          if gunzip -t < "$f" 2> /dev/null; then echo "backup is not encrypted"; exit 1; fi
+          AGE_IDENTITY=/tmp/backup.key deploy/restore.sh "$f" restore_check
+          q() { MYSQL_PWD=root mysql -h 127.0.0.1 -u root -N -e "$1"; }
+          for t in User Report Evidence Message Lead Staff AuditLog; do
+            a=$(q "SELECT COUNT(*) FROM demo_test.$t"); b=$(q "SELECT COUNT(*) FROM restore_check.$t")
+            echo "$t: $a / $b"; [ "$a" = "$b" ] || exit 1
+          done
+          a=$(q "SELECT MD5(GROUP_CONCAT(hash ORDER BY id)) FROM demo_test.AuditLog")
+          b=$(q "SELECT MD5(GROUP_CONCAT(hash ORDER BY id)) FROM restore_check.AuditLog")
+          [ "$a" = "$b" ] && echo "audit chain identical after restore"
 
   e2e:
     runs-on: ubuntu-latest
@@ -163,3 +185,33 @@ jobs:
         run: |
           tail -80 /tmp/web.log
           tail -80 /tmp/admin.log
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the app image
+        run: docker build -t kurotrace:ci --build-arg NEXT_PUBLIC_SITE_URL=https://example.com .
+      - name: Run it read-only, as in production
+        run: |
+          docker run -d --name web -p 3000:3000 --read-only --tmpfs /tmp --tmpfs /app/apps/web/.next/cache \
+            --cap-drop ALL --security-opt no-new-privileges:true -w /app/apps/web -e HOME=/tmp \
+            -e DATABASE_URL=mysql://x:x@127.0.0.1:1/x -e KEYS_SOURCE=env \
+            -e FIELD_ENCRYPTION_KEYS=k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            -e BLIND_INDEX_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            kurotrace:ci node /app/node_modules/next/dist/bin/next start -p 3000
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000/robots.txt && break; sleep 1; done
+          curl -sfI http://localhost:3000/robots.txt | grep -i "strict-transport-security"
+          docker exec web id -u | grep -vx 0
+          docker logs web | tail -5
+      - name: Build the backup image
+        run: docker build -t kurotrace-backup:ci -f deploy/backup.Dockerfile deploy
+      - name: Check the compose file
+        env:
+          NEXT_PUBLIC_SITE_URL: https://example.com
+          MYSQL_APP_PASSWORD: x
+          MYSQL_ROOT_PASSWORD: x
+          BACKUP_AGE_RECIPIENT: age1example
+          SITE_DOMAIN: example.com
+          ADMIN_DOMAIN: admin.example.com
+        run: touch deploy/.env && docker compose -f deploy/docker-compose.yml config -q

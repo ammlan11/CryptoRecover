@@ -1,0 +1,26 @@
+# HTTPS certificates are issued and renewed automatically.
+{
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 30MB
+	}
+	reverse_proxy web:3000
+}
+
+www.{$SITE_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
+# The admin app itself refuses every IP outside ADMIN_ALLOWED_IPS with a 404.
+{$ADMIN_DOMAIN} {
+	request_body {
+		max_size 1MB
+	}
+	reverse_proxy admin:3001
+}
