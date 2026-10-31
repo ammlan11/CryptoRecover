@@ -10,7 +10,8 @@
     "./storage": "./src/storage.ts",
     "./email": "./src/email.ts",
     "./audit": "./src/audit.ts",
-    "./site": "./src/site.ts"
+    "./site": "./src/site.ts",
+    "./malware": "./src/malware.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

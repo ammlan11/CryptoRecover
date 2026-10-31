@@ -3,6 +3,7 @@ import { prisma, type Prisma, type ReportStatus, type ScamType, type Staff } fro
 import { decryptFile, decryptText, encryptText } from "@kurotrace/services/crypto";
 import { sendEmail, templates } from "@kurotrace/services/email";
 import { aad } from "@kurotrace/services/records";
+import { staffMayOpen } from "@kurotrace/services/malware";
 import { storage } from "@kurotrace/services/storage";
 import { can, Forbidden } from "@/lib/permissions";
 import { staffEvent } from "./staff-auth";
@@ -199,6 +200,7 @@ export async function readCaseEvidence(actor: Actor, ip: string, publicRef: stri
   const file = await prisma.evidence.findFirst({ where: { id: evidenceId, report: { AND: [visibleTo(actor), { publicRef }] } } });
   if (!file) return null;
   if (file.scanStatus === "INFECTED") throw new CaseError("This file was flagged as malware and can't be downloaded.");
+  if (!staffMayOpen(file.scanStatus)) throw new CaseError("This file hasn't been virus-scanned yet. Try again shortly.");
   const bytes = decryptFile(await storage().get(file.storageKey), aad.file(file.storageKey));
   await staffEvent(actor.id, ip, "evidence.downloaded", "evidence", file.id, { report: file.reportId });
   return { bytes, mimeType: file.mimeType, name: decryptText(file.fileNameEnc, aad.fileName(file.storageKey)), scanStatus: file.scanStatus };

@@ -256,3 +256,16 @@ describe("audit log", () => {
     expect(verifyAuditChain(chain)).toBe(-1);
   });
 });
+
+describe.skipIf(!process.env.CLAMAV_HOST)("malware scanning (live ClamAV)", () => {
+  it("flags the EICAR test file and marks a scanned upload as clean", async () => {
+    const { scanEvidence } = await import("@kurotrace/services/malware");
+    const { EICAR } = await import("@kurotrace/core/malware");
+    expect((await scanEvidence(Buffer.from(EICAR))).status).toBe("INFECTED");
+    expect(await scanEvidence(PNG)).toEqual({ status: "CLEAN" });
+    const user = await verifiedUser("scan@example.com");
+    const draft = await reports.createDraft(user.id, "UNSURE");
+    await reports.addEvidence(user.id, draft.publicRef, [new File([PNG], "clean.png")]);
+    expect((await prisma.evidence.findFirstOrThrow({ where: { reportId: draft.id } })).scanStatus).toBe("CLEAN");
+  });
+});

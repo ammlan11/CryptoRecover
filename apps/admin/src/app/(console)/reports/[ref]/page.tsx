@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@kurotrace/db";
 import { evidenceName, messageText, narrativeOf, noteText } from "@kurotrace/services/records";
+import { staffMayOpen } from "@kurotrace/services/malware";
 import { Form } from "@/components/Form";
 import { can } from "@/lib/permissions";
 import { fmt, fmtDay, LOSS, Pill, SCAM, STATUS } from "@/lib/labels";
@@ -99,8 +100,9 @@ export default async function CasePage({ params }: { params: Promise<{ ref: stri
                   <li key={f.id}>
                     <span>{evidenceName(f)} <span className="hint">· {(f.sizeBytes / 1024).toFixed(0)} KB · {f.mimeType}</span></span>
                     <span>
-                      {f.scanStatus === "PENDING" && <span className="pill pill-warn" style={{ marginRight: 8 }}>Not yet scanned</span>}
-                      {f.scanStatus === "INFECTED" ? <span className="pill pill-danger">Malware: blocked</span> : <a className="btn btn-line btn-small" href={`/reports/${report.publicRef}/evidence/${f.id}`}>Download</a>}
+                      {(f.scanStatus === "PENDING" || f.scanStatus === "FAILED") && <span className="pill pill-warn" style={{ marginRight: 8 }}>Not yet scanned</span>}
+                      {f.scanStatus === "CLEAN" && <span className="pill pill-ok" style={{ marginRight: 8 }}>Scanned</span>}
+                      {f.scanStatus === "INFECTED" ? <span className="pill pill-danger">Malware: blocked</span> : staffMayOpen(f.scanStatus) ? <a className="btn btn-line btn-small" href={`/reports/${report.publicRef}/evidence/${f.id}`}>Download</a> : null}
                     </span>
                   </li>
                 ))}

@@ -7,6 +7,7 @@ import { prisma, type ContactChannel, type IndicatorKind, type LossBand, type Pr
 import { decryptFile, decryptText, encryptFile, encryptText } from "@kurotrace/services/crypto";
 import { userEvent } from "@kurotrace/services/audit";
 import { aad, evidenceName, messageText, narrativeOf } from "@kurotrace/services/records";
+import { scanEvidence } from "@kurotrace/services/malware";
 import { storage } from "@kurotrace/services/storage";
 
 export { evidenceName, messageText, narrativeOf };
@@ -153,22 +154,32 @@ export async function addEvidence(userId: string, publicRef: string, files: File
   const incoming = files.filter((f) => f.size > 0);
   if (incoming.length === 0) throw new ReportError("Choose at least one file.");
   if (existing + incoming.length > MAX_EVIDENCE_FILES) throw new ReportError(`You can attach up to ${MAX_EVIDENCE_FILES} files.`);
+  // Check every file first, so one bad file means nothing from this batch is stored.
+  const checked = [];
   for (const file of incoming) {
     if (file.size > MAX_EVIDENCE_BYTES) throw new ReportError(`"${cleanFileName(file.name)}" is larger than 10 MB.`);
     const bytes = Buffer.from(await file.arrayBuffer());
     const type = sniffEvidenceType(bytes);
     if (!type) throw new ReportError(`"${cleanFileName(file.name)}" isn't a PNG, JPG, WebP or PDF file.`);
+    const scan = await scanEvidence(bytes);
+    if (scan.status === "INFECTED") {
+      await userEvent(userId, "evidence.rejected_malware", "report", report.id, { signature: scan.signature, sha256: createHash("sha256").update(bytes).digest("hex") });
+      throw new ReportError(`"${cleanFileName(file.name)}" was flagged by our virus scanner and wasn't uploaded. If it's a screenshot, try taking it again.`);
+    }
+    checked.push({ name: cleanFileName(file.name), bytes, mime: type.mime, scanStatus: scan.status });
+  }
+  for (const file of checked) {
     const storageKey = `evidence/${report.id}/${randomUUID()}`;
-    await storage().put(storageKey, encryptFile(bytes, fileAad(storageKey)));
+    await storage().put(storageKey, encryptFile(file.bytes, fileAad(storageKey)));
     await prisma.evidence.create({
       data: {
         reportId: report.id,
         storageKey,
-        mimeType: type.mime,
-        sizeBytes: bytes.length,
-        sha256: createHash("sha256").update(bytes).digest("hex"),
-        fileNameEnc: encryptText(cleanFileName(file.name), fileNameAad(storageKey)),
-        scanStatus: "PENDING", // Phase 5: malware scanning sets CLEAN / INFECTED
+        mimeType: file.mime,
+        sizeBytes: file.bytes.length,
+        sha256: createHash("sha256").update(file.bytes).digest("hex"),
+        fileNameEnc: encryptText(file.name, fileNameAad(storageKey)),
+        scanStatus: file.scanStatus,
       },
     });
   }
