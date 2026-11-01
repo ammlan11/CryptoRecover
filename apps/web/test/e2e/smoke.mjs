@@ -180,6 +180,12 @@ try {
   step("account pages require sign-in");
 
   console.log("\nAll end-to-end checks passed.");
+} catch (error) {
+  // Shows up as a GitHub annotation, so the failure is readable without downloading logs.
+  const text = await page.locator("main, body").first().innerText().catch(() => "");
+  const flat = (v) => String(v).replace(/\s+/g, " ").slice(0, 600);
+  console.log(`::error title=Browser test failed::${flat(error?.message ?? error)} | url=${page.url()} | page: ${flat(text)}`);
+  throw error;
 } finally {
   await browser.close();
 }

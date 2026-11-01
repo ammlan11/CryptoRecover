@@ -206,6 +206,7 @@ jobs:
         run: |
           tail -80 /tmp/web.log
           tail -80 /tmp/admin.log
+          grep -iE "error|fail|⨯" /tmp/web.log | tail -5 | tr -d '\r' | sed 's/^/::error title=web server::/' || true
 
   docker:
     runs-on: ubuntu-latest
