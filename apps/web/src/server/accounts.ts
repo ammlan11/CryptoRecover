@@ -11,6 +11,7 @@ import { consumeEmailToken, issueEmailToken, peekEmailToken } from "./email-toke
 import { sendEmail, templates } from "@kurotrace/services/email";
 import { destroyOtherSessions } from "./sessions";
 import { storage } from "@kurotrace/services/storage";
+import { loginCodeAccepted, maskPhone, userPhone } from "./phone";
 
 export const USER_EMAIL_CONTEXT = "user.email";
 const MAX_FAILED_LOGINS = 5;
@@ -80,7 +81,7 @@ export async function verifyEmail(token: string): Promise<boolean> {
 
 export type LoginResult =
   | { ok: true; userId: string }
-  | { ok: "two_step"; challenge: string }
+  | { ok: "two_step"; challenge: string; userId: string; sms: boolean }
   | { ok: false; reason: "invalid" | "locked"; retryMinutes?: number };
 
 /** Password check with per-account lockout. Wrong email and wrong password look identical. */
@@ -104,12 +105,15 @@ export async function authenticate(email: string, password: string): Promise<Log
     return lock ? { ok: false, reason: "locked", retryMinutes: LOCK_MINUTES } : { ok: false, reason: "invalid" };
   }
   await prisma.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null } });
-  if (user.totpEnabledAt) {
+  // A confirmed mobile number (required for every account) or the authenticator app
+  // means a second step. Accounts that haven't confirmed a number yet sign in and are
+  // sent straight to confirm one before they can do anything else.
+  if (user.phoneVerifiedAt || user.totpEnabledAt) {
     const token = generateToken();
     await prisma.loginChallenge.create({
       data: { tokenHash: hashToken(token), userId: user.id, expiresAt: new Date(Date.now() + CHALLENGE_MINUTES * 60_000) },
     });
-    return { ok: "two_step", challenge: token };
+    return { ok: "two_step", challenge: token, userId: user.id, sms: Boolean(user.phoneVerifiedAt) };
   }
   await userEvent(user.id, "user.login");
   return { ok: true, userId: user.id };
@@ -122,7 +126,10 @@ export async function completeTwoStep(challengeToken: string, code: string): Pro
   await prisma.loginChallenge.update({ where: { id: challenge.id }, data: { attempts: { increment: 1 } } });
   const user = challenge.user;
   let accepted = false;
-  if (user.totpSecretEnc && /^\d{6}$/.test(code.replace(/\s/g, ""))) {
+  const sixDigits = /^\d{6}$/.test(code.replace(/\s/g, ""));
+  if (sixDigits && user.phoneVerifiedAt && (await loginCodeAccepted(user.id, code))) {
+    accepted = true;
+  } else if (user.totpSecretEnc && sixDigits) {
     const step = verifyTotp(decryptText(user.totpSecretEnc, `user:${user.id}:totp`), code, Date.now(), user.totpLastStep);
     if (step !== null) {
       // Conditional update: a second request with the same code loses the race.
@@ -269,4 +276,16 @@ export async function deleteAccount(userId: string, password: string): Promise<b
   await prisma.$transaction([prisma.report.deleteMany({ where: { userId } }), prisma.user.delete({ where: { id: userId } })]);
   await userEvent(userId, "user.deleted", "user", userId, { reports: user.reports.length });
   return true;
+}
+
+/** What the "enter your code" page should say for this sign-in. */
+export async function challengeSummary(challengeToken: string | undefined) {
+  if (!challengeToken) return null;
+  const challenge = await prisma.loginChallenge.findUnique({
+    where: { tokenHash: hashToken(challengeToken) },
+    include: { user: { select: { id: true, phoneEnc: true, phoneVerifiedAt: true, totpEnabledAt: true } } },
+  });
+  if (!challenge || challenge.expiresAt < new Date()) return null;
+  const phone = challenge.user.phoneVerifiedAt ? userPhone(challenge.user) : null;
+  return { userId: challenge.userId, maskedPhone: phone ? maskPhone(phone) : null, hasApp: Boolean(challenge.user.totpEnabledAt) };
 }

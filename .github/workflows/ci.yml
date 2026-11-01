@@ -140,6 +140,10 @@ jobs:
       # Cloudflare's published always-pass test keys: exercises the real bot-check flow.
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
       TURNSTILE_SECRET_KEY: 1x0000000000000000000000000000000AA
+      # Text messages are written to a file the browser test reads (never allowed outside CI).
+      SMS_PROVIDER: file
+      ALLOW_TEST_SMS: "true"
+      SMS_OUTBOX_FILE: /tmp/kurotrace-sms.log
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

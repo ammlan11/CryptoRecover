@@ -1,11 +1,12 @@
 /**
  * Browser smoke test of the user terminal, run in CI against a production build and MySQL.
- * Signs up, sends a full report with evidence, messages the team, turns on two-step
+ * Signs up, confirms a mobile number by text, sends a full report with evidence, messages the team, turns on two-step
  * sign-in and logs back in with a code. Fails loudly on any broken step.
  *
  *   BASE_URL=http://localhost:3000 MYSQL="mysql -h127.0.0.1 -uroot -proot demo_e2e" node test/e2e/smoke.mjs
  */
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -14,6 +15,8 @@ const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const EMAIL = `e2e-${Date.now()}@example.com`;
 const PASSWORD = "a long and memorable passphrase";
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(512, 3)]);
+const SMS_FILE = process.env.SMS_OUTBOX_FILE ?? "/tmp/kurotrace-sms.log";
+const lastSmsCode = () => JSON.parse(readFileSync(SMS_FILE, "utf8").trim().split("\n").at(-1)).code;
 const sql = (q) => execSync(`${process.env.MYSQL} -N -e "${q}"`).toString().trim();
 
 function totp(secret, timeMs) {
@@ -55,8 +58,20 @@ try {
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
   await page.click("button[type=submit]");
+  // Every account confirms a mobile number before anything else.
+  await page.waitForURL("**/verify-phone");
+  await page.goto(`${BASE}/account/reports`);
+  await page.waitForURL("**/verify-phone");
+  await page.fill("#phone", "+94 77 123 4567");
+  await page.click("button:has-text('Text me a code')");
+  await page.getByText("We texted a 6-digit code").waitFor();
+  await page.fill("#code", "000000");
+  await page.click("button:has-text('Confirm number')");
+  await page.getByText("That code isn't right").waitFor();
+  await page.fill("#code", lastSmsCode());
+  await page.click("button:has-text('Confirm number')");
   await page.waitForURL("**/account/reports");
-  step("log in");
+  step("log in, then confirm a mobile number with a texted code");
 
   // New report → five steps
   await page.click("text=+ New report");
@@ -130,13 +145,26 @@ try {
   await page.fill("#password", PASSWORD);
   await page.click("button[type=submit]");
   await page.waitForURL("**/login/two-step**");
+  await page.getByText(/We texted a 6-digit code to \+94 ••• ••• 567/).waitFor();
+  await page.getByText("You can also use a code from your authenticator app").waitFor();
+  await page.fill("#code", lastSmsCode());
+  await page.click("button[type=submit]");
+  await page.waitForURL("**/account/reports");
+  await page.getByText(ref).waitFor();
+  step("logged back in with the texted code");
+
+  await page.click("button:has-text('Log out')");
+  await page.waitForURL("**/login");
+  await page.fill("#email", EMAIL);
+  await page.fill("#password", PASSWORD);
+  await page.click("button[type=submit]");
+  await page.waitForURL("**/login/two-step**");
   // The code used to turn it on can't be replayed: wait for the next 30-second window.
   await page.waitForTimeout(30_000 - (Date.now() % 30_000) + 1_000);
   await page.fill("#code", totp(secret, Date.now()));
   await page.click("button[type=submit]");
   await page.waitForURL("**/account/reports");
-  await page.getByText(ref).waitFor();
-  step("logged back in with an authenticator code");
+  step("or with an authenticator app code instead");
 
   // Logged-out users can't see account pages
   const fresh = await (await browser.newContext()).newPage();

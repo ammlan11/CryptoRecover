@@ -15,6 +15,9 @@ import {
   resetPassword,
 } from "@/server/accounts";
 import { createDraft } from "@/server/reports";
+import { challengeSummary } from "@/server/accounts";
+import { PhoneError, sendLoginCode } from "@/server/phone";
+import { ipHashFor } from "@kurotrace/services/crypto";
 import { prisma } from "@kurotrace/db";
 
 export type AuthState = { status: "idle" } | { status: "error"; message: string } | { status: "success"; message: string };
@@ -72,7 +75,16 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
   const next = safeNext(form.get("next"));
   if (result.ok === "two_step") {
     await setChallengeCookie(result.challenge);
-    redirect(`/login/two-step?next=${encodeURIComponent(next)}`);
+    let sent = "";
+    if (result.sms) {
+      try {
+        await sendLoginCode(result.userId, ipHashFor(await clientIp()));
+      } catch (error) {
+        sent = "&sent=0"; // the code page explains and offers "send it again"
+        if (!(error instanceof PhoneError)) console.error("login code failed", error instanceof Error ? error.message : error);
+      }
+    }
+    redirect(`/login/two-step?next=${encodeURIComponent(next)}${sent}`);
   }
   await signIn(result.userId);
   redirect(next);
@@ -130,4 +142,19 @@ export async function continueAction(_prev: AuthState, form: FormData): Promise<
   const lead = await prisma.lead.findUnique({ where: { id: result.leadId }, select: { scamType: true } });
   const report = await createDraft(result.userId, lead?.scamType ?? "UNSURE", result.leadId);
   redirect(`/account/reports/${report.publicRef}/edit`);
+}
+
+/** "Text me a new code" on the sign-in code page. */
+export async function resendLoginCodeAction(_prev: AuthState): Promise<AuthState> {
+  if (await limited(resetLimiter, "sms-resend")) return SLOW_DOWN;
+  const summary = await challengeSummary(await takeChallengeCookie());
+  if (!summary?.maskedPhone) return { status: "error", message: "Your sign-in timed out. Please log in again." };
+  try {
+    const masked = await sendLoginCode(summary.userId, ipHashFor(await clientIp()));
+    return { status: "success", message: `We sent a new code to ${masked}.` };
+  } catch (error) {
+    if (error instanceof PhoneError) return { status: "error", message: error.message };
+    console.error("resend login code failed", error instanceof Error ? error.message : error);
+    return GENERIC;
+  }
 }

@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import {
   continueAction,
   forgotAction,
+  resendLoginCodeAction,
   loginAction,
   resetAction,
   signupAction,
@@ -83,19 +84,38 @@ export function SignupForm() {
   );
 }
 
-export function TwoStepForm({ next }: { next?: string }) {
+export function TwoStepForm({ next, maskedPhone, hasApp }: { next?: string; maskedPhone: string | null; hasApp: boolean }) {
   const [state, action, pending] = useActionState(twoStepAction, idle);
+  const [resent, resend, resending] = useActionState(resendLoginCodeAction, idle);
+  const label = maskedPhone ? (hasApp ? "Code from the text message or your authenticator app" : "Code from the text message") : "6-digit code or a recovery code";
   return (
-    <form action={action} className="stack">
-      <input type="hidden" name="next" value={next ?? ""} />
-      <div>
-        <label className="label" htmlFor="code">6-digit code or a recovery code</label>
-        <input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={20} className="field" style={{ fontFamily: "var(--font-mono)", letterSpacing: ".2em", fontSize: 20 }} />
-      </div>
-      <Message state={state} />
-      <Submit pending={pending}>Verify</Submit>
-      <p className="fine" style={{ textAlign: "center" }}><Link href="/login">Start again</Link></p>
-    </form>
+    <div className="stack">
+      <form action={action} className="stack">
+        <input type="hidden" name="next" value={next ?? ""} />
+        <div>
+          <label className="label" htmlFor="code">{label}</label>
+          <input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={20} autoFocus className="field" style={{ fontFamily: "var(--font-mono)", letterSpacing: ".2em", fontSize: 20 }} />
+        </div>
+        <Message state={state} />
+        <Submit pending={pending}>Verify</Submit>
+      </form>
+      {maskedPhone && (
+        <form action={resend}>
+          <Message state={resent} />
+          <p className="fine" style={{ textAlign: "center", margin: 0 }}>
+            No text after a minute? <button type="submit" className="link-button" disabled={resending}>Send a new code</button>
+          </p>
+        </form>
+      )}
+      {maskedPhone && (
+        <p className="fine" style={{ textAlign: "center", margin: 0 }}>
+          {hasApp
+            ? "Lost this phone? Use your authenticator app or one of your recovery codes."
+            : "Lost this phone? Email us from your account's email address and we'll help you set a new number."}
+        </p>
+      )}
+      <p className="fine" style={{ textAlign: "center", margin: 0 }}><Link href="/login">Start again</Link></p>
+    </div>
   );
 }
 

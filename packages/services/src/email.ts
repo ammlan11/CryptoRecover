@@ -74,6 +74,10 @@ export const templates = {
     subject: enabled ? "Two-step sign-in is on" : "Two-step sign-in was turned off",
     text: `${enabled ? "Two-step sign-in is now on for your Kuro Trace account." : "Two-step sign-in was turned off on your Kuro Trace account."}\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password${footer}`,
   }),
+  phoneChanged: (masked: string, resetLink: string): Omit<Email, "to"> => ({
+    subject: "Your mobile number was changed",
+    text: `The mobile number for sign-in codes on your Kuro Trace account was changed to ${masked}.\n\nIf this wasn't you, reset your password now and contact us: ${resetLink}${footer}`,
+  }),
   /** Staff replies: the content stays inside the account, never in the email. */
   newMessage: (ref: string): Omit<Email, "to"> => ({
     subject: `New message about report ${ref}`,

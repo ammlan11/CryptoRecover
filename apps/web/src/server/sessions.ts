@@ -22,7 +22,7 @@ export async function resolveSession(token: string | undefined | null) {
   if (!token || token.length > 100) return null;
   const session = await prisma.userSession.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { user: { select: { id: true, emailEnc: true, emailVerifiedAt: true, totpEnabledAt: true, deletedAt: true } } },
+    include: { user: { select: { id: true, emailEnc: true, emailVerifiedAt: true, totpEnabledAt: true, phoneVerifiedAt: true, deletedAt: true } } },
   });
   if (!session) return null;
   const now = Date.now();

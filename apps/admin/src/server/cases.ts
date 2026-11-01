@@ -94,7 +94,7 @@ export async function openCase(actor: Actor, ip: string, publicRef: string) {
 }
 
 async function caseFor(actor: Actor, publicRef: string) {
-  const report = await prisma.report.findFirst({ where: { AND: [visibleTo(actor), { publicRef }] }, include: { user: { select: { emailEnc: true } } } });
+  const report = await prisma.report.findFirst({ where: { AND: [visibleTo(actor), { publicRef }] }, include: { user: { select: { id: true, emailEnc: true, phoneEnc: true } } } });
   if (!report) throw new CaseError("Report not found.");
   return report;
 }
@@ -192,7 +192,9 @@ export async function revealReporterEmail(actor: Actor, ip: string, publicRef: s
   const report = await caseFor(actor, publicRef);
   if (!report.user) return null;
   await staffEvent(actor.id, ip, "reporter.email_viewed", "report", report.id);
-  return decryptText(report.user.emailEnc, aad.userEmail());
+  const email = decryptText(report.user.emailEnc, aad.userEmail());
+  const phone = report.user.phoneEnc ? decryptText(report.user.phoneEnc, aad.userPhone(report.user.id)) : null;
+  return phone ? `${email} · ${phone}` : email;
 }
 
 /** Evidence for staff: visibility checked, infected files refused, every download audited. */

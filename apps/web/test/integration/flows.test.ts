@@ -12,6 +12,7 @@ import { totpAt } from "@kurotrace/core/totp";
 import { prisma } from "@kurotrace/db";
 
 process.env.EMAIL_PROVIDER = "memory";
+process.env.SMS_PROVIDER = "memory";
 process.env.EVIDENCE_STORAGE = "local";
 process.env.EVIDENCE_LOCAL_DIR = mkdtempSync(path.join(tmpdir(), "evidence-"));
 
@@ -25,6 +26,9 @@ const sessions = await import("@/server/sessions");
 const reports = await import("@/server/reports");
 const { storage } = await import("@kurotrace/services/storage");
 const { protectEmail } = await import("@kurotrace/services/crypto");
+const phone = await import("@/server/phone");
+const { smsOutbox } = await import("@kurotrace/services/sms");
+const lastSms = () => smsOutbox.at(-1)!.code;
 
 const PASSWORD = "correct horse battery staple";
 const linkToken = (text: string) => /token=([A-Za-z0-9_-]+)/.exec(text)?.[1] ?? "";
@@ -233,6 +237,74 @@ describe("reports", () => {
     expect(await prisma.user.findUnique({ where: { id: user.id } })).toBeNull();
     expect(await prisma.report.count({ where: { id: draft.id } })).toBe(0);
     await expect(storage().get(key)).rejects.toThrow();
+  });
+});
+
+describe("mobile number and texted sign-in codes", () => {
+  it("accepts real mobile numbers in international format only", () => {
+    expect(phone.normalizePhone("+94 77 123 4567").e164).toBe("+94771234567");
+    expect(phone.normalizePhone("0094 77 123 4567").e164).toBe("+94771234567");
+    expect(() => phone.normalizePhone("077 123 4567")).toThrow(/country code/);
+    expect(() => phone.normalizePhone("+94 12")).toThrow(/valid/);
+    expect(() => phone.normalizePhone("+94 11 234 5678")).toThrow(/mobile/); // Colombo landline
+    process.env.SMS_ALLOWED_COUNTRIES = "AE,GB";
+    expect(() => phone.normalizePhone("+94 77 123 4567")).toThrow(/country/);
+    delete process.env.SMS_ALLOWED_COUNTRIES;
+    expect(phone.maskPhone("+94771234567")).toBe("+94 ••• ••• 567");
+  });
+
+  it("confirms a number, then needs a texted code at every sign-in", async () => {
+    const user = await verifiedUser("sam@example.com");
+    expect(await phone.startPhoneVerification(user.id, "+94 77 123 4567", null)).toBe("+94 ••• ••• 567");
+    expect(smsOutbox.at(-1)!.to).toBe("+94771234567");
+    expect(await phone.confirmPhoneVerification(user.id, "000000")).toEqual({ ok: false, expired: false });
+    expect(await phone.confirmPhoneVerification(user.id, lastSms())).toEqual({ ok: true });
+    const saved = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(saved.phoneVerifiedAt).not.toBeNull();
+    expect(saved.phoneEnc).not.toContain("771234567"); // stored encrypted
+    const stored = await prisma.phoneCode.findFirstOrThrow({ where: { userId: user.id } });
+    expect(stored.codeHash).not.toBe(lastSms()); // only a keyed hash of the code
+
+    const login = await accounts.authenticate("sam@example.com", PASSWORD);
+    expect(login).toMatchObject({ ok: "two_step", sms: true });
+    const challenge = login.ok === "two_step" ? login.challenge : "";
+    await phone.sendLoginCode(user.id, null);
+    const code = lastSms();
+    await expect(phone.sendLoginCode(user.id, null)).rejects.toThrow(/30 seconds/); // no rapid resends
+    expect(await accounts.completeTwoStep(challenge, code)).toMatchObject({ ok: true });
+
+    const again = await accounts.authenticate("sam@example.com", PASSWORD);
+    const challenge2 = again.ok === "two_step" ? again.challenge : "";
+    expect(await accounts.completeTwoStep(challenge2, code)).toEqual({ ok: false }); // used codes don't work twice
+  });
+
+  it("locks a code after 5 wrong tries and emails the owner when the number changes", async () => {
+    const user = await verifiedUser("lee@example.com");
+    await phone.startPhoneVerification(user.id, "+971 50 123 4567", null);
+    await phone.confirmPhoneVerification(user.id, lastSms());
+
+    await prisma.phoneCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 60_000) } });
+    await phone.startPhoneVerification(user.id, "+44 7911 123456", null);
+    const right = lastSms();
+    for (let i = 0; i < 5; i++) await phone.confirmPhoneVerification(user.id, "111111");
+    expect(await phone.confirmPhoneVerification(user.id, right)).toEqual({ ok: false, expired: true });
+
+    await prisma.phoneCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 60_000) } });
+    await phone.startPhoneVerification(user.id, "+44 7911 123456", null);
+    expect(await phone.confirmPhoneVerification(user.id, lastSms())).toEqual({ ok: true });
+    expect(outbox.at(-1)!.subject).toBe("Your mobile number was changed");
+    expect(outbox.at(-1)!.text).toContain("+44 ••• ••• 456");
+    expect(outbox.at(-1)!.text).not.toContain("7911123456");
+  });
+
+  it("caps how many codes one account can request", async () => {
+    const user = await verifiedUser("max@example.com");
+    for (let i = 0; i < 5; i++) {
+      await prisma.phoneCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 31_000) } });
+      await phone.startPhoneVerification(user.id, "+94 77 765 4321", null);
+    }
+    await prisma.phoneCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 31_000) } });
+    await expect(phone.startPhoneVerification(user.id, "+94 77 765 4321", null)).rejects.toThrow(/Too many codes/);
   });
 });
 
