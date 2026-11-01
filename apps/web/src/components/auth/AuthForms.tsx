@@ -33,6 +33,17 @@ function Submit({ pending, children }: { pending: boolean; children: React.React
   );
 }
 
+/** Mobile number with country code, required on every account so the team can reach the reporter. */
+export function PhoneField({ label = "Mobile number", defaultValue }: { label?: string; defaultValue?: string }) {
+  return (
+    <div>
+      <label className="label" htmlFor="phone">{label}</label>
+      <input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={40} className="field" placeholder="+94 77 123 4567" defaultValue={defaultValue} />
+      <p className="fine" style={{ margin: "6px 0 0" }}>Start with your country code. Only our research team can see it, to contact you about your report.</p>
+    </div>
+  );
+}
+
 const PasswordHint = () => <p className="fine" style={{ margin: "6px 0 0" }}>At least 12 characters. A short phrase you'll remember works well.</p>;
 
 export function LoginForm({ next }: { next?: string }) {
@@ -72,6 +83,7 @@ export function SignupForm() {
         <input id="password" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} className="field" />
         <PasswordHint />
       </div>
+      <PhoneField />
       <label className="check">
         <input type="checkbox" name="terms" required />
         <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>
@@ -84,10 +96,10 @@ export function SignupForm() {
   );
 }
 
-export function TwoStepForm({ next, maskedPhone, hasApp }: { next?: string; maskedPhone: string | null; hasApp: boolean }) {
+export function TwoStepForm({ next, hasApp }: { next?: string; hasApp: boolean }) {
   const [state, action, pending] = useActionState(twoStepAction, idle);
   const [resent, resend, resending] = useActionState(resendLoginCodeAction, idle);
-  const label = maskedPhone ? (hasApp ? "Code from the text message or your authenticator app" : "Code from the text message") : "6-digit code or a recovery code";
+  const label = hasApp ? "Code from the email or your authenticator app" : "Code from the email";
   return (
     <div className="stack">
       <form action={action} className="stack">
@@ -99,21 +111,13 @@ export function TwoStepForm({ next, maskedPhone, hasApp }: { next?: string; mask
         <Message state={state} />
         <Submit pending={pending}>Verify</Submit>
       </form>
-      {maskedPhone && (
-        <form action={resend}>
-          <Message state={resent} />
-          <p className="fine" style={{ textAlign: "center", margin: 0 }}>
-            No text after a minute? <button type="submit" className="link-button" disabled={resending}>Send a new code</button>
-          </p>
-        </form>
-      )}
-      {maskedPhone && (
+      <form action={resend}>
+        <Message state={resent} />
         <p className="fine" style={{ textAlign: "center", margin: 0 }}>
-          {hasApp
-            ? "Lost this phone? Use your authenticator app or one of your recovery codes."
-            : "Lost this phone? Email us from your account's email address and we'll help you set a new number."}
+          No email after a minute? Check spam, or <button type="submit" className="link-button" disabled={resending}>send a new code</button>
         </p>
-      )}
+      </form>
+      {hasApp && <p className="fine" style={{ textAlign: "center", margin: 0 }}>Lost your phone? You can also type one of your recovery codes.</p>}
       <p className="fine" style={{ textAlign: "center", margin: 0 }}><Link href="/login">Start again</Link></p>
     </div>
   );
@@ -178,6 +182,7 @@ export function ContinueForm({ token, email }: { token: string; email: string })
         <input id="password" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} className="field" />
         <PasswordHint />
       </div>
+      <PhoneField />
       <label className="check">
         <input type="checkbox" name="terms" required />
         <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>

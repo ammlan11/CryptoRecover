@@ -33,15 +33,16 @@ export default async function SettingsPage() {
 
         <section className="panel">
           <h2 className="section-title" style={{ marginTop: 0 }}>Mobile number</h2>
-          <p style={{ marginTop: 0 }}>{phone ? maskPhone(phone) : "None"} <span className="status status-ok">Confirmed</span> We text a code to this number each time you log in.</p>
+          <p style={{ marginTop: 0 }}>{phone ? maskPhone(phone) : "None"}. Only our research team can see it, to contact you about your reports.</p>
           <Link href="/account/settings/phone" className="btn btn-line">Change number</Link>
         </section>
 
         <section className="panel">
-          <h2 className="section-title" style={{ marginTop: 0 }}>Authenticator app (optional, stronger)</h2>
+          <h2 className="section-title" style={{ marginTop: 0 }}>Two-step sign-in</h2>
+          <p style={{ marginTop: 0 }}>Each time you log in, we email a code to your address. For extra protection, you can use an authenticator app instead.</p>
           {session.user.totpEnabledAt ? (
             <>
-              <p style={{ marginTop: 0 }}><span className="status status-ok">On</span> When you log in you can use a code from your authenticator app instead of the text message. {remaining} recovery {remaining === 1 ? "code" : "codes"} left.</p>
+              <p style={{ marginTop: 0 }}><span className="status status-ok">On</span> When you log in you can use a code from your authenticator app instead of the emailed code. {remaining} recovery {remaining === 1 ? "code" : "codes"} left.</p>
               <ActionForm action={disableTwoStepAction} className="stack">
                 <div>
                   <label className="label" htmlFor="pw-2fa">Your password, to turn it off</label>
@@ -52,8 +53,8 @@ export default async function SettingsPage() {
             </>
           ) : (
             <>
-              <p style={{ marginTop: 0 }}>Text messages can be intercepted if someone takes over your phone number. An authenticator app (Google Authenticator, Microsoft Authenticator, 1Password and others) can&rsquo;t be, and gives you recovery codes in case you lose your phone.</p>
-              <Link href="/account/settings/two-step" className="btn btn-navy">Set up two-step sign-in</Link>
+              <p style={{ marginTop: 0 }}>An authenticator app (Google Authenticator, Microsoft Authenticator, 1Password and others) keeps working even if someone gets into your email, and gives you recovery codes.</p>
+              <Link href="/account/settings/two-step" className="btn btn-navy">Set up an authenticator app</Link>
             </>
           )}
         </section>

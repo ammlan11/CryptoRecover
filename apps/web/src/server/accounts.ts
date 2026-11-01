@@ -11,7 +11,8 @@ import { consumeEmailToken, issueEmailToken, peekEmailToken } from "./email-toke
 import { sendEmail, templates } from "@kurotrace/services/email";
 import { destroyOtherSessions } from "./sessions";
 import { storage } from "@kurotrace/services/storage";
-import { loginCodeAccepted, maskPhone, userPhone } from "./phone";
+import { loginCodeAccepted, maskEmail } from "./login-codes";
+import { protectPhone } from "./phone";
 
 export const USER_EMAIL_CONTEXT = "user.email";
 const MAX_FAILED_LOGINS = 5;
@@ -48,7 +49,7 @@ export function userEmail(user: { id: string; emailEnc: string }) {
  * Sign-up. The response never reveals whether an account exists: an existing owner
  * gets an "you already have an account" email instead of a second account.
  */
-export async function registerUser(email: string, password: string): Promise<PasswordCheck> {
+export async function registerUser(email: string, password: string, phoneE164: string): Promise<PasswordCheck> {
   const check = await checkNewPassword(password);
   if (!check.ok) return check;
   const { emailHash, emailEnc } = protectEmail(email, USER_EMAIL_CONTEXT);
@@ -58,6 +59,7 @@ export async function registerUser(email: string, password: string): Promise<Pas
     return { ok: true };
   }
   const user = await prisma.user.create({ data: { emailHash, emailEnc, passwordHash: await hashPassword(password) } });
+  await prisma.user.update({ where: { id: user.id }, data: protectPhone(user.id, phoneE164) });
   await sendVerification(user.id, email);
   await userEvent(user.id, "user.registered");
   return { ok: true };
@@ -81,7 +83,7 @@ export async function verifyEmail(token: string): Promise<boolean> {
 
 export type LoginResult =
   | { ok: true; userId: string }
-  | { ok: "two_step"; challenge: string; userId: string; sms: boolean }
+  | { ok: "two_step"; challenge: string; userId: string }
   | { ok: false; reason: "invalid" | "locked"; retryMinutes?: number };
 
 /** Password check with per-account lockout. Wrong email and wrong password look identical. */
@@ -105,18 +107,13 @@ export async function authenticate(email: string, password: string): Promise<Log
     return lock ? { ok: false, reason: "locked", retryMinutes: LOCK_MINUTES } : { ok: false, reason: "invalid" };
   }
   await prisma.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null } });
-  // A confirmed mobile number (required for every account) or the authenticator app
-  // means a second step. Accounts that haven't confirmed a number yet sign in and are
-  // sent straight to confirm one before they can do anything else.
-  if (user.phoneVerifiedAt || user.totpEnabledAt) {
-    const token = generateToken();
-    await prisma.loginChallenge.create({
-      data: { tokenHash: hashToken(token), userId: user.id, expiresAt: new Date(Date.now() + CHALLENGE_MINUTES * 60_000) },
-    });
-    return { ok: "two_step", challenge: token, userId: user.id, sms: Boolean(user.phoneVerifiedAt) };
-  }
-  await userEvent(user.id, "user.login");
-  return { ok: true, userId: user.id };
+  // Every sign-in has a second step: a code emailed to the account's address, or
+  // (for people who set one up) a code from their authenticator app.
+  const token = generateToken();
+  await prisma.loginChallenge.create({
+    data: { tokenHash: hashToken(token), userId: user.id, expiresAt: new Date(Date.now() + CHALLENGE_MINUTES * 60_000) },
+  });
+  return { ok: "two_step", challenge: token, userId: user.id };
 }
 
 /** Second step: an authenticator code or a recovery code. Five tries per challenge. */
@@ -127,7 +124,7 @@ export async function completeTwoStep(challengeToken: string, code: string): Pro
   const user = challenge.user;
   let accepted = false;
   const sixDigits = /^\d{6}$/.test(code.replace(/\s/g, ""));
-  if (sixDigits && user.phoneVerifiedAt && (await loginCodeAccepted(user.id, code))) {
+  if (sixDigits && (await loginCodeAccepted(user.id, code))) {
     accepted = true;
   } else if (user.totpSecretEnc && sixDigits) {
     const step = verifyTotp(decryptText(user.totpSecretEnc, `user:${user.id}:totp`), code, Date.now(), user.totpLastStep);
@@ -251,7 +248,7 @@ export async function inspectContinueLink(token: string) {
 }
 
 /** Creates the account from the link (the click proves the email), so it starts verified. */
-export async function accountFromContinueLink(token: string, password: string): Promise<{ ok: true; userId: string; leadId: string } | { ok: false; message: string }> {
+export async function accountFromContinueLink(token: string, password: string, phoneE164: string): Promise<{ ok: true; userId: string; leadId: string } | { ok: false; message: string }> {
   const check = await checkNewPassword(password);
   if (!check.ok) return check;
   const info = await inspectContinueLink(token);
@@ -260,6 +257,7 @@ export async function accountFromContinueLink(token: string, password: string): 
   if (!row) return { ok: false, message: "This link has expired or was already used." };
   const { emailHash, emailEnc } = protectEmail(info.email, USER_EMAIL_CONTEXT);
   const user = await prisma.user.create({ data: { emailHash, emailEnc, passwordHash: await hashPassword(password), emailVerifiedAt: new Date() } });
+  await prisma.user.update({ where: { id: user.id }, data: protectPhone(user.id, phoneE164) });
   await userEvent(user.id, "user.registered", "user", user.id, { via: "continue_link" });
   return { ok: true, userId: user.id, leadId: info.leadId };
 }
@@ -283,9 +281,8 @@ export async function challengeSummary(challengeToken: string | undefined) {
   if (!challengeToken) return null;
   const challenge = await prisma.loginChallenge.findUnique({
     where: { tokenHash: hashToken(challengeToken) },
-    include: { user: { select: { id: true, phoneEnc: true, phoneVerifiedAt: true, totpEnabledAt: true } } },
+    include: { user: { select: { id: true, emailEnc: true, totpEnabledAt: true } } },
   });
   if (!challenge || challenge.expiresAt < new Date()) return null;
-  const phone = challenge.user.phoneVerifiedAt ? userPhone(challenge.user) : null;
-  return { userId: challenge.userId, maskedPhone: phone ? maskPhone(phone) : null, hasApp: Boolean(challenge.user.totpEnabledAt) };
+  return { userId: challenge.userId, maskedEmail: maskEmail(userEmail(challenge.user)), hasApp: Boolean(challenge.user.totpEnabledAt) };
 }

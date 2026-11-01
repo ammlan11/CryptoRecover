@@ -16,7 +16,8 @@ import {
 } from "@/server/accounts";
 import { createDraft } from "@/server/reports";
 import { challengeSummary } from "@/server/accounts";
-import { PhoneError, sendLoginCode } from "@/server/phone";
+import { LoginCodeError, sendLoginCode } from "@/server/login-codes";
+import { normalizePhone, PhoneError } from "@/server/phone";
 import { ipHashFor } from "@kurotrace/services/crypto";
 import { prisma } from "@kurotrace/db";
 
@@ -45,8 +46,14 @@ export async function signupAction(_prev: AuthState, form: FormData): Promise<Au
   const parsed = z.object({ email, password }).safeParse({ email: form.get("email"), password: form.get("password") });
   if (!parsed.success) return { status: "error", message: "Enter a valid email and password." };
   if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the privacy notice to continue." };
+  let phone: string;
   try {
-    const result = await registerUser(parsed.data.email, parsed.data.password);
+    phone = normalizePhone(String(form.get("phone") ?? "").slice(0, 40));
+  } catch (error) {
+    return { status: "error", message: error instanceof PhoneError ? error.message : "Enter a valid mobile number." };
+  }
+  try {
+    const result = await registerUser(parsed.data.email, parsed.data.password, phone);
     if (!result.ok) return { status: "error", message: result.message };
     return { status: "success", message: "Check your inbox for a link to confirm your email. Then log in." };
   } catch (error) {
@@ -76,13 +83,11 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
   if (result.ok === "two_step") {
     await setChallengeCookie(result.challenge);
     let sent = "";
-    if (result.sms) {
-      try {
-        await sendLoginCode(result.userId, ipHashFor(await clientIp()));
-      } catch (error) {
-        sent = "&sent=0"; // the code page explains and offers "send it again"
-        if (!(error instanceof PhoneError)) console.error("login code failed", error instanceof Error ? error.message : error);
-      }
+    try {
+      await sendLoginCode(result.userId, ipHashFor(await clientIp()));
+    } catch (error) {
+      sent = "&sent=0"; // the code page explains and offers "send it again"
+      if (!(error instanceof LoginCodeError)) console.error("login code failed", error instanceof Error ? error.message : error);
     }
     redirect(`/login/two-step?next=${encodeURIComponent(next)}${sent}`);
   }
@@ -101,7 +106,7 @@ export async function twoStepAction(_prev: AuthState, form: FormData): Promise<A
       await clearChallengeCookie();
       return { status: "error", message: "Your sign-in timed out. Please log in again." };
     }
-    return { status: "error", message: "That code didn't work. Check your authenticator app and try again." };
+    return { status: "error", message: "That code didn't work. Check the latest email from us (or your authenticator app) and try again." };
   }
   await clearChallengeCookie();
   await signIn(result.userId);
@@ -136,7 +141,13 @@ export async function resetAction(_prev: AuthState, form: FormData): Promise<Aut
 export async function continueAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   if (await limited(signupLimiter, "continue")) return SLOW_DOWN;
   if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the privacy notice to continue." };
-  const result = await accountFromContinueLink(String(form.get("token") ?? ""), String(form.get("password") ?? ""));
+  let phone: string;
+  try {
+    phone = normalizePhone(String(form.get("phone") ?? "").slice(0, 40));
+  } catch (error) {
+    return { status: "error", message: error instanceof PhoneError ? error.message : "Enter a valid mobile number." };
+  }
+  const result = await accountFromContinueLink(String(form.get("token") ?? ""), String(form.get("password") ?? ""), phone);
   if (!result.ok) return { status: "error", message: result.message };
   await signIn(result.userId);
   const lead = await prisma.lead.findUnique({ where: { id: result.leadId }, select: { scamType: true } });
@@ -144,16 +155,16 @@ export async function continueAction(_prev: AuthState, form: FormData): Promise<
   redirect(`/account/reports/${report.publicRef}/edit`);
 }
 
-/** "Text me a new code" on the sign-in code page. */
+/** "Send a new code" on the sign-in code page. */
 export async function resendLoginCodeAction(_prev: AuthState): Promise<AuthState> {
-  if (await limited(resetLimiter, "sms-resend")) return SLOW_DOWN;
+  if (await limited(resetLimiter, "code-resend")) return SLOW_DOWN;
   const summary = await challengeSummary(await takeChallengeCookie());
-  if (!summary?.maskedPhone) return { status: "error", message: "Your sign-in timed out. Please log in again." };
+  if (!summary) return { status: "error", message: "Your sign-in timed out. Please log in again." };
   try {
     const masked = await sendLoginCode(summary.userId, ipHashFor(await clientIp()));
-    return { status: "success", message: `We sent a new code to ${masked}.` };
+    return { status: "success", message: `We emailed a new code to ${masked}.` };
   } catch (error) {
-    if (error instanceof PhoneError) return { status: "error", message: error.message };
+    if (error instanceof LoginCodeError) return { status: "error", message: error.message };
     console.error("resend login code failed", error instanceof Error ? error.message : error);
     return GENERIC;
   }

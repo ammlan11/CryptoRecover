@@ -19,7 +19,6 @@ export const aad = {
   userTotp: (userId: string) => `user:${userId}:totp`,
   staffTotp: (staffId: string) => `staff:${staffId}:totp`,
   userPhone: (userId: string) => `user:${userId}:phone`,
-  phoneCode: (userId: string) => `user:${userId}:phone-code`,
 };
 
 export const narrativeOf = (r: { id: string; narrativeEnc: string | null }) => (r.narrativeEnc ? decryptText(r.narrativeEnc, aad.narrative(r.id)) : "");

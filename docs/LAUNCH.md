@@ -53,6 +53,7 @@ Tick each item off as you set it. Items marked **required** must be done before 
 - [ ] **Required.** Run `age-keygen -o kurotrace-backup.key` and keep that file **offline**. Put the public key it prints (`age1…`) in `BACKUP_AGE_RECIPIENT`.
 
 ### Email (Postmark)
+Every log-in sends a sign-in code by email, so email delivery has to be reliable before launch.
 - [ ] **Required.** Create a Postmark account and verify the domain: add the DKIM and Return-Path DNS records.
 - [ ] **Required.** Set `EMAIL_PROVIDER=postmark`, `POSTMARK_SERVER_TOKEN`, and `EMAIL_FROM="Kuro Trace <no-reply@kurotrace.com>"`.
 - [ ] Add SPF and DMARC DNS records, starting with `v=DMARC1; p=quarantine`.
@@ -61,13 +62,6 @@ Tick each item off as you set it. Items marked **required** must be done before 
 - [ ] **Required.** Create a **private** bucket with no public access, and turn on versioning.
 - [ ] **Required.** Set `EVIDENCE_STORAGE=s3`, `EVIDENCE_BUCKET`, `EVIDENCE_REGION` and `EVIDENCE_ENDPOINT` (R2 only), plus an access key that's limited to that bucket.
 - [ ] For off-site backups, create a second bucket and set `BACKUP_BUCKET` and the `BACKUP_S3_*` settings. Then start with `docker compose --profile offsite up -d`.
-
-### Text messages (Twilio Verify)
-- [ ] **Required.** Create a Twilio account, then **Verify → Services → Create**. Turn on **Fraud Guard** in that service.
-- [ ] **Required.** Set `SMS_PROVIDER=twilio-verify`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_VERIFY_SERVICE_SID`.
-- [ ] Check sender rules for the countries you'll advertise in. Some, such as the UAE and India, need a registered sender ID; Twilio Verify handles most of this.
-- [ ] Optional: limit texts to your target countries with `SMS_ALLOWED_COUNTRIES` (e.g. `AE,SA,GB,US`), and tune `SMS_DAILY_LIMIT`.
-- [ ] Lost phones: after checking the person's identity, run `npm run reset-user-phone -w @kurotrace/admin -- --email person@example.com`. They confirm a new number at their next log-in.
 
 ### Bot protection (Cloudflare Turnstile, free)
 - [ ] **Required.** Create a Turnstile widget for `kurotrace.com`. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` and `TURNSTILE_HOSTNAMES=kurotrace.com,www.kurotrace.com`.

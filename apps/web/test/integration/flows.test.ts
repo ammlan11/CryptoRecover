@@ -12,7 +12,6 @@ import { totpAt } from "@kurotrace/core/totp";
 import { prisma } from "@kurotrace/db";
 
 process.env.EMAIL_PROVIDER = "memory";
-process.env.SMS_PROVIDER = "memory";
 process.env.EVIDENCE_STORAGE = "local";
 process.env.EVIDENCE_LOCAL_DIR = mkdtempSync(path.join(tmpdir(), "evidence-"));
 
@@ -27,10 +26,11 @@ const reports = await import("@/server/reports");
 const { storage } = await import("@kurotrace/services/storage");
 const { protectEmail } = await import("@kurotrace/services/crypto");
 const phone = await import("@/server/phone");
-const { smsOutbox } = await import("@kurotrace/services/sms");
-const lastSms = () => smsOutbox.at(-1)!.code;
+const loginCodes = await import("@/server/login-codes");
+const lastCode = () => /code is:\s+(\d{6})/.exec(outbox.at(-1)!.text)![1]!;
 
 const PASSWORD = "correct horse battery staple";
+const PHONE = "+94771234567";
 const linkToken = (text: string) => /token=([A-Za-z0-9_-]+)/.exec(text)?.[1] ?? "";
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(200, 7)]);
 
@@ -45,7 +45,7 @@ async function wipe() {
 }
 
 async function verifiedUser(email: string) {
-  await accounts.registerUser(email, PASSWORD);
+  await accounts.registerUser(email, PASSWORD, PHONE);
   await accounts.verifyEmail(linkToken(outbox.at(-1)!.text));
   return prisma.user.findFirstOrThrow({ orderBy: { createdAt: "desc" } });
 }
@@ -61,7 +61,7 @@ afterAll(async () => {
 
 describe("accounts", () => {
   it("registers, verifies once, and never creates a duplicate account", async () => {
-    expect(await accounts.registerUser("Ana@Example.com", PASSWORD)).toEqual({ ok: true });
+    expect(await accounts.registerUser("Ana@Example.com", PASSWORD, PHONE)).toEqual({ ok: true });
     const verify = outbox.at(-1)!;
     expect(verify.subject).toBe("Confirm your email");
     expect(await accounts.verifyEmail(linkToken(verify.text))).toBe(true);
@@ -72,17 +72,17 @@ describe("accounts", () => {
     expect(user.emailEnc).not.toContain("ana@example.com"); // stored encrypted
     expect(user.passwordHash.startsWith("$argon2id$")).toBe(true);
 
-    expect(await accounts.registerUser("ana@example.com", PASSWORD)).toEqual({ ok: true });
+    expect(await accounts.registerUser("ana@example.com", PASSWORD, PHONE)).toEqual({ ok: true });
     expect(outbox.at(-1)!.subject).toBe("You already have a Kuro Trace account");
     expect(await prisma.user.count()).toBe(1);
   });
 
   it("refuses short and breached passwords", async () => {
-    expect((await accounts.registerUser("b@example.com", "short")).ok).toBe(false);
+    expect((await accounts.registerUser("b@example.com", "short", PHONE)).ok).toBe(false);
     // SHA-1 suffix of PASSWORD is returned by the fake range API → breached
     const { createHash } = await import("node:crypto");
     breachedSuffixes = `${createHash("sha1").update("password1234").digest("hex").toUpperCase().slice(5)}:12`;
-    expect((await accounts.registerUser("b@example.com", "password1234")).ok).toBe(false);
+    expect((await accounts.registerUser("b@example.com", "password1234", PHONE)).ok).toBe(false);
   });
 
   it("locks the account after 5 wrong passwords, with a generic error for unknown emails", async () => {
@@ -92,7 +92,7 @@ describe("accounts", () => {
     expect(locked).toMatchObject({ ok: false, reason: "locked" });
     expect(await accounts.authenticate("ana@example.com", PASSWORD)).toMatchObject({ ok: false, reason: "locked" });
     await prisma.user.updateMany({ data: { lockedUntil: null } });
-    expect(await accounts.authenticate("ana@example.com", PASSWORD)).toMatchObject({ ok: true });
+    expect(await accounts.authenticate("ana@example.com", PASSWORD)).toMatchObject({ ok: "two_step" });
   });
 
   it("creates, resolves and destroys sessions; only hashes are stored", async () => {
@@ -135,7 +135,7 @@ describe("accounts", () => {
 
     expect(await accounts.disableTwoStep(user.id, "wrong password!!")).toBe(false);
     expect(await accounts.disableTwoStep(user.id, PASSWORD)).toBe(true);
-    expect(await accounts.authenticate("ana@example.com", PASSWORD)).toMatchObject({ ok: true });
+    expect(await accounts.authenticate("ana@example.com", PASSWORD)).toMatchObject({ ok: "two_step" });
   });
 
   it("resets a password with a single-use link and signs other devices out", async () => {
@@ -148,7 +148,7 @@ describe("accounts", () => {
     expect(await accounts.resetPassword(token, "a brand new passphrase")).toEqual({ ok: true });
     expect((await accounts.resetPassword(token, "another new passphrase")).ok).toBe(false);
     expect(await sessions.resolveSession(sessionToken)).toBeNull();
-    expect(await accounts.authenticate("ana@example.com", "a brand new passphrase")).toMatchObject({ ok: true });
+    expect(await accounts.authenticate("ana@example.com", "a brand new passphrase")).toMatchObject({ ok: "two_step" });
   });
 
   it("creates a verified account from a continue-report link", async () => {
@@ -157,11 +157,11 @@ describe("accounts", () => {
     await accounts.sendContinueReportLink("lead@example.com", lead.id);
     const token = linkToken(outbox.at(-1)!.text);
     expect(await accounts.inspectContinueLink(token)).toMatchObject({ email: "lead@example.com", hasAccount: false, scamType: "FAKE_TRADING_APP" });
-    const created = await accounts.accountFromContinueLink(token, PASSWORD);
+    const created = await accounts.accountFromContinueLink(token, PASSWORD, PHONE);
     expect(created.ok).toBe(true);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: created.ok ? created.userId : "" } });
     expect(user.emailVerifiedAt).not.toBeNull();
-    expect((await accounts.accountFromContinueLink(token, PASSWORD)).ok).toBe(false);
+    expect((await accounts.accountFromContinueLink(token, PASSWORD, PHONE)).ok).toBe(false);
   });
 });
 
@@ -221,7 +221,7 @@ describe("reports", () => {
   });
 
   it("requires a confirmed email before a report can be sent", async () => {
-    await accounts.registerUser("unverified@example.com", PASSWORD);
+    await accounts.registerUser("unverified@example.com", PASSWORD, PHONE);
     const user = await prisma.user.findFirstOrThrow({ where: { emailVerifiedAt: null } });
     const draft = await reports.createDraft(user.id, "UNSURE");
     await expect(reports.submitReport(user.id, draft.publicRef, { researchConsent: true, publicAlertConsent: false })).rejects.toThrow(/confirm your email/);
@@ -240,71 +240,72 @@ describe("reports", () => {
   });
 });
 
-describe("mobile number and texted sign-in codes", () => {
-  it("accepts real mobile numbers in international format only", () => {
-    expect(phone.normalizePhone("+94 77 123 4567").e164).toBe("+94771234567");
-    expect(phone.normalizePhone("0094 77 123 4567").e164).toBe("+94771234567");
+describe("mobile number and emailed sign-in codes", () => {
+  it("accepts real mobile numbers in international format only, and stores them encrypted", async () => {
+    expect(phone.normalizePhone("+94 77 123 4567")).toBe("+94771234567");
+    expect(phone.normalizePhone("0094 77 123 4567")).toBe("+94771234567");
     expect(() => phone.normalizePhone("077 123 4567")).toThrow(/country code/);
     expect(() => phone.normalizePhone("+94 12")).toThrow(/valid/);
     expect(() => phone.normalizePhone("+94 11 234 5678")).toThrow(/mobile/); // Colombo landline
-    process.env.SMS_ALLOWED_COUNTRIES = "AE,GB";
-    expect(() => phone.normalizePhone("+94 77 123 4567")).toThrow(/country/);
-    delete process.env.SMS_ALLOWED_COUNTRIES;
     expect(phone.maskPhone("+94771234567")).toBe("+94 ••• ••• 567");
+
+    const user = await verifiedUser("sam@example.com");
+    expect(user.phoneEnc).not.toBeNull();
+    expect(user.phoneEnc).not.toContain("771234567");
+    expect(phone.userPhone(user)).toBe(PHONE);
+
+    expect(await phone.savePhone(user.id, "+971 50 123 4567")).toBe("+971 ••• ••• 567");
+    expect(outbox.at(-1)!.subject).toBe("Your mobile number was changed");
+    expect(outbox.at(-1)!.text).not.toContain("501234567");
   });
 
-  it("confirms a number, then needs a texted code at every sign-in", async () => {
-    const user = await verifiedUser("sam@example.com");
-    expect(await phone.startPhoneVerification(user.id, "+94 77 123 4567", null)).toBe("+94 ••• ••• 567");
-    expect(smsOutbox.at(-1)!.to).toBe("+94771234567");
-    expect(await phone.confirmPhoneVerification(user.id, "000000")).toEqual({ ok: false, expired: false });
-    expect(await phone.confirmPhoneVerification(user.id, lastSms())).toEqual({ ok: true });
-    const saved = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-    expect(saved.phoneVerifiedAt).not.toBeNull();
-    expect(saved.phoneEnc).not.toContain("771234567"); // stored encrypted
-    const stored = await prisma.phoneCode.findFirstOrThrow({ where: { userId: user.id } });
-    expect(stored.codeHash).not.toBe(lastSms()); // only a keyed hash of the code
-
-    const login = await accounts.authenticate("sam@example.com", PASSWORD);
-    expect(login).toMatchObject({ ok: "two_step", sms: true });
+  it("emails a code at every sign-in; codes work once, newest only, and expire after 5 wrong tries", async () => {
+    const user = await verifiedUser("lee@example.com");
+    const login = await accounts.authenticate("lee@example.com", PASSWORD);
+    expect(login.ok).toBe("two_step");
     const challenge = login.ok === "two_step" ? login.challenge : "";
-    await phone.sendLoginCode(user.id, null);
-    const code = lastSms();
-    await expect(phone.sendLoginCode(user.id, null)).rejects.toThrow(/30 seconds/); // no rapid resends
-    expect(await accounts.completeTwoStep(challenge, code)).toMatchObject({ ok: true });
 
-    const again = await accounts.authenticate("sam@example.com", PASSWORD);
+    expect(await loginCodes.sendLoginCode(user.id, null)).toBe("l•••@example.com");
+    const mail = outbox.at(-1)!;
+    expect(mail.to).toBe("lee@example.com");
+    expect(mail.subject).toMatch(/^\d{6} is your Kuro Trace sign-in code$/);
+    const code = lastCode();
+    const stored = await prisma.loginCode.findFirstOrThrow({ where: { userId: user.id } });
+    expect(stored.codeHash).not.toContain(code); // only a keyed hash
+    await expect(loginCodes.sendLoginCode(user.id, null)).rejects.toThrow(/30 seconds/); // no rapid resends
+
+    expect(await accounts.completeTwoStep(challenge, "000000")).toEqual({ ok: false });
+    expect(await accounts.completeTwoStep(challenge, code)).toMatchObject({ ok: true, userId: user.id });
+    const again = await accounts.authenticate("lee@example.com", PASSWORD);
     const challenge2 = again.ok === "two_step" ? again.challenge : "";
     expect(await accounts.completeTwoStep(challenge2, code)).toEqual({ ok: false }); // used codes don't work twice
+
+    // Only the newest code works, and 5 wrong tries burn it.
+    await prisma.loginCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 60_000) } });
+    await loginCodes.sendLoginCode(user.id, null);
+    const older = lastCode();
+    await prisma.loginCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 60_000) } });
+    await loginCodes.sendLoginCode(user.id, null);
+    const newest = lastCode();
+    if (older !== newest) expect(await loginCodes.loginCodeAccepted(user.id, older)).toBe(false);
+    for (let i = 0; i < 4; i++) await loginCodes.loginCodeAccepted(user.id, "111111");
+    expect(await loginCodes.loginCodeAccepted(user.id, newest)).toBe(false);
   });
 
-  it("locks a code after 5 wrong tries and emails the owner when the number changes", async () => {
-    const user = await verifiedUser("lee@example.com");
-    await phone.startPhoneVerification(user.id, "+971 50 123 4567", null);
-    await phone.confirmPhoneVerification(user.id, lastSms());
+  it("confirms the email address when a code is used, and caps codes per account", async () => {
+    await accounts.registerUser("kim@example.com", PASSWORD, PHONE);
+    const user = await prisma.user.findFirstOrThrow({ where: { emailHash: protectEmail("kim@example.com", "user.email").emailHash } });
+    expect(user.emailVerifiedAt).toBeNull();
+    await loginCodes.sendLoginCode(user.id, null);
+    expect(await loginCodes.loginCodeAccepted(user.id, lastCode())).toBe(true);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).emailVerifiedAt).not.toBeNull();
 
-    await prisma.phoneCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 60_000) } });
-    await phone.startPhoneVerification(user.id, "+44 7911 123456", null);
-    const right = lastSms();
-    for (let i = 0; i < 5; i++) await phone.confirmPhoneVerification(user.id, "111111");
-    expect(await phone.confirmPhoneVerification(user.id, right)).toEqual({ ok: false, expired: true });
-
-    await prisma.phoneCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 60_000) } });
-    await phone.startPhoneVerification(user.id, "+44 7911 123456", null);
-    expect(await phone.confirmPhoneVerification(user.id, lastSms())).toEqual({ ok: true });
-    expect(outbox.at(-1)!.subject).toBe("Your mobile number was changed");
-    expect(outbox.at(-1)!.text).toContain("+44 ••• ••• 456");
-    expect(outbox.at(-1)!.text).not.toContain("7911123456");
-  });
-
-  it("caps how many codes one account can request", async () => {
-    const user = await verifiedUser("max@example.com");
     for (let i = 0; i < 5; i++) {
-      await prisma.phoneCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 31_000) } });
-      await phone.startPhoneVerification(user.id, "+94 77 765 4321", null);
+      await prisma.loginCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 31_000) } });
+      await loginCodes.sendLoginCode(user.id, null);
     }
-    await prisma.phoneCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 31_000) } });
-    await expect(phone.startPhoneVerification(user.id, "+94 77 765 4321", null)).rejects.toThrow(/Too many codes/);
+    await prisma.loginCode.updateMany({ where: { userId: user.id }, data: { createdAt: new Date(Date.now() - 31_000) } });
+    await expect(loginCodes.sendLoginCode(user.id, null)).rejects.toThrow(/Too many codes/);
   });
 });
 

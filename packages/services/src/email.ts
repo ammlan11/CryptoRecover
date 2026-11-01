@@ -1,4 +1,5 @@
 import "server-only";
+import { appendFileSync } from "node:fs";
 import { siteUrl } from "./site";
 
 /**
@@ -7,6 +8,8 @@ import { siteUrl } from "./site";
  * - "log":      development only; prints the message, including links, to the server log
  * - "memory":   tests; messages collect in `outbox`
  * - "none":     end-to-end tests; messages are dropped
+ * - "file":     CI only (needs ALLOW_TEST_EMAIL=true); appends messages to EMAIL_OUTBOX_FILE
+ *               so browser tests can read sign-in codes
  */
 export interface Email {
   to: string;
@@ -24,6 +27,11 @@ export async function sendEmail(email: Email): Promise<void> {
   }
   if (provider === "none") {
     // End-to-end tests: drop the message. Never logs links, so it is safe on any server.
+    return;
+  }
+  if (provider === "file") {
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_TEST_EMAIL !== "true") throw new Error("EMAIL_PROVIDER=file needs ALLOW_TEST_EMAIL=true (CI only)");
+    appendFileSync(process.env.EMAIL_OUTBOX_FILE ?? "/tmp/kurotrace-email.log", `${JSON.stringify(email)}\n`);
     return;
   }
   if (provider === "log") {
@@ -47,7 +55,7 @@ export async function sendEmail(email: Email): Promise<void> {
   throw new Error(`Unknown EMAIL_PROVIDER "${provider}"`);
 }
 
-const footer = `\n\n—\nDemo never asks for payment, a "recovery fee" or your seed phrase. If an email asks for any of these, it is not from us.\n${siteUrl}`;
+const footer = `\n\n—\nKuro Trace never asks for payment, a "recovery fee" or your seed phrase. If an email asks for any of these, it is not from us.\n${siteUrl}`;
 
 export const templates = {
   verifyEmail: (link: string): Omit<Email, "to"> => ({
@@ -76,7 +84,11 @@ export const templates = {
   }),
   phoneChanged: (masked: string, resetLink: string): Omit<Email, "to"> => ({
     subject: "Your mobile number was changed",
-    text: `The mobile number for sign-in codes on your Kuro Trace account was changed to ${masked}.\n\nIf this wasn't you, reset your password now and contact us: ${resetLink}${footer}`,
+    text: `The mobile number on your Kuro Trace account was changed to ${masked}.\n\nIf this wasn't you, reset your password now: ${resetLink}${footer}`,
+  }),
+  loginCode: (code: string, minutes: number): Omit<Email, "to"> => ({
+    subject: `${code} is your Kuro Trace sign-in code`,
+    text: `Your sign-in code is:\n\n    ${code}\n\nIt works once, for ${minutes} minutes. Never share it: Kuro Trace will never ask you for this code by phone, chat or email.\n\nIf you didn't just try to log in, someone has your password. Reset it now: ${siteUrl}/forgot-password${footer}`,
   }),
   /** Staff replies: the content stays inside the account, never in the email. */
   newMessage: (ref: string): Omit<Email, "to"> => ({

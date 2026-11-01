@@ -1,6 +1,6 @@
 /**
  * Browser smoke test of the user terminal, run in CI against a production build and MySQL.
- * Signs up, confirms a mobile number by text, sends a full report with evidence, messages the team, turns on two-step
+ * Signs up with a mobile number, logs in with an emailed code, sends a full report with evidence, messages the team, turns on two-step
  * sign-in and logs back in with a code. Fails loudly on any broken step.
  *
  *   BASE_URL=http://localhost:3000 MYSQL="mysql -h127.0.0.1 -uroot -proot demo_e2e" node test/e2e/smoke.mjs
@@ -15,8 +15,12 @@ const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const EMAIL = `e2e-${Date.now()}@example.com`;
 const PASSWORD = "a long and memorable passphrase";
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(512, 3)]);
-const SMS_FILE = process.env.SMS_OUTBOX_FILE ?? "/tmp/kurotrace-sms.log";
-const lastSmsCode = () => JSON.parse(readFileSync(SMS_FILE, "utf8").trim().split("\n").at(-1)).code;
+const MAIL_FILE = process.env.EMAIL_OUTBOX_FILE ?? "/tmp/kurotrace-email.log";
+const lastSignInCode = () => {
+  const mails = readFileSync(MAIL_FILE, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const mail = mails.reverse().find((m) => m.to === EMAIL && / is your Kuro Trace sign-in code$/.test(m.subject));
+  return /code is:\s+(\d{6})/.exec(mail.text)[1];
+};
 const sql = (q) => execSync(`${process.env.MYSQL} -N -e "${q}"`).toString().trim();
 
 function totp(secret, timeMs) {
@@ -45,6 +49,14 @@ try {
   await page.goto(`${BASE}/signup`);
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
+  await page.fill("#phone", "077 123 4567");
+  await page.check("input[name=terms]");
+  await page.click("button[type=submit]");
+  await page.getByText("Start your mobile number with the country code").waitFor();
+  // React clears the form after a failed submit: fill it again with a valid number.
+  await page.fill("#email", EMAIL);
+  await page.fill("#password", PASSWORD);
+  await page.fill("#phone", "+94 77 123 4567");
   await page.check("input[name=terms]");
   await page.click("button[type=submit]");
   await page.getByText("Check your inbox").waitFor();
@@ -58,20 +70,16 @@ try {
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
   await page.click("button[type=submit]");
-  // Every account confirms a mobile number before anything else.
-  await page.waitForURL("**/verify-phone");
-  await page.goto(`${BASE}/account/reports`);
-  await page.waitForURL("**/verify-phone");
-  await page.fill("#phone", "+94 77 123 4567");
-  await page.click("button:has-text('Text me a code')");
-  await page.getByText("We texted a 6-digit code").waitFor();
+  // Every sign-in has a second step: a code emailed to the account.
+  await page.waitForURL("**/login/two-step**");
+  await page.getByText(/We emailed a 6-digit code to e•••@example\.com/).waitFor();
   await page.fill("#code", "000000");
-  await page.click("button:has-text('Confirm number')");
-  await page.getByText("That code isn't right").waitFor();
-  await page.fill("#code", lastSmsCode());
-  await page.click("button:has-text('Confirm number')");
+  await page.click("button:has-text('Verify')");
+  await page.getByText("That code didn't work").waitFor();
+  await page.fill("#code", lastSignInCode());
+  await page.click("button:has-text('Verify')");
   await page.waitForURL("**/account/reports");
-  step("log in, then confirm a mobile number with a texted code");
+  step("sign up with a mobile number; log in with password + emailed code");
 
   // New report → five steps
   await page.click("text=+ New report");
@@ -145,13 +153,12 @@ try {
   await page.fill("#password", PASSWORD);
   await page.click("button[type=submit]");
   await page.waitForURL("**/login/two-step**");
-  await page.getByText(/We texted a 6-digit code to \+94 ••• ••• 567/).waitFor();
   await page.getByText("You can also use a code from your authenticator app").waitFor();
-  await page.fill("#code", lastSmsCode());
+  await page.fill("#code", lastSignInCode());
   await page.click("button[type=submit]");
   await page.waitForURL("**/account/reports");
   await page.getByText(ref).waitFor();
-  step("logged back in with the texted code");
+  step("logged back in with the emailed code");
 
   await page.click("button:has-text('Log out')");
   await page.waitForURL("**/login");

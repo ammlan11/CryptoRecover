@@ -11,14 +11,14 @@ export default async function TwoStepPage({ searchParams }: { searchParams: Prom
   const { next, sent } = await searchParams;
   const summary = await challengeSummary(await takeChallengeCookie());
   if (!summary) redirect("/login");
-  const lead = summary.maskedPhone
-    ? sent === "0"
-      ? `We couldn't send a text to ${summary.maskedPhone} just now. Use "Send a new code" below${summary.hasApp ? ", or a code from your authenticator app" : ""}.`
-      : `We texted a 6-digit code to ${summary.maskedPhone}.${summary.hasApp ? " You can also use a code from your authenticator app." : ""} Never share it: we will never ask you for it.`
-    : "Open your authenticator app and type the 6-digit code for Kuro Trace. Lost your phone? Use one of your recovery codes.";
+  const app = summary.hasApp ? " You can also use a code from your authenticator app." : "";
+  const lead =
+    sent === "0"
+      ? `We couldn't send the email to ${summary.maskedEmail} just now. Use "send a new code" below.${app}`
+      : `We emailed a 6-digit code to ${summary.maskedEmail}.${app} Never share it: we will never ask you for it.`;
   return (
-    <AuthCard title="Enter your code" lead={lead}>
-      <TwoStepForm next={next} maskedPhone={summary.maskedPhone} hasApp={summary.hasApp} />
+    <AuthCard title="Check your email" lead={lead}>
+      <TwoStepForm next={next} hasApp={summary.hasApp} />
     </AuthCard>
   );
 }
