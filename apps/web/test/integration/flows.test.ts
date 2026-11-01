@@ -272,7 +272,7 @@ describe("mobile number and emailed sign-in codes", () => {
     const code = lastCode();
     const stored = await prisma.loginCode.findFirstOrThrow({ where: { userId: user.id } });
     expect(stored.codeHash).not.toContain(code); // only a keyed hash
-    await expect(loginCodes.sendLoginCode(user.id, null)).rejects.toThrow(/30 seconds/); // no rapid resends
+    await expect(loginCodes.sendLoginCode(user.id, null, { resend: true })).rejects.toThrow(/30 seconds/); // no rapid resends
 
     expect(await accounts.completeTwoStep(challenge, "000000")).toEqual({ ok: false });
     expect(await accounts.completeTwoStep(challenge, code)).toMatchObject({ ok: true, userId: user.id });

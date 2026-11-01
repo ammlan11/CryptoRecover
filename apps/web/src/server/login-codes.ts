@@ -29,9 +29,11 @@ export function maskEmail(email: string) {
 }
 
 /** Emails a fresh code. Returns the masked address it went to. */
-export async function sendLoginCode(userId: string, ipHash: string | null) {
+export async function sendLoginCode(userId: string, ipHash: string | null, opts: { resend?: boolean } = {}) {
   const now = Date.now();
-  const last = await prisma.loginCode.findFirst({ where: { userId }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+  // The short wait applies to "send a new code". A fresh log-in (which needs the right
+  // password) always gets a code, within the hourly caps below.
+  const last = opts.resend ? await prisma.loginCode.findFirst({ where: { userId }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }) : null;
   if (last && last.createdAt.getTime() > now - RESEND_SECONDS * 1000) throw new LoginCodeError("We just sent a code. Please wait 30 seconds before asking for another.");
   const since = { gt: new Date(now - HOUR) };
   const [perAccount, perIp] = await Promise.all([

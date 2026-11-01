@@ -161,7 +161,7 @@ export async function resendLoginCodeAction(_prev: AuthState): Promise<AuthState
   const summary = await challengeSummary(await takeChallengeCookie());
   if (!summary) return { status: "error", message: "Your sign-in timed out. Please log in again." };
   try {
-    const masked = await sendLoginCode(summary.userId, ipHashFor(await clientIp()));
+    const masked = await sendLoginCode(summary.userId, ipHashFor(await clientIp()), { resend: true });
     return { status: "success", message: `We emailed a new code to ${masked}.` };
   } catch (error) {
     if (error instanceof LoginCodeError) return { status: "error", message: error.message };
