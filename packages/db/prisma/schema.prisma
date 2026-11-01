@@ -25,6 +25,9 @@ model User {
   totpSecretEnc   String?   @db.Text
   totpEnabledAt   DateTime?
   totpLastStep    Int? // last accepted TOTP time step: refuses replayed codes
+  phoneEnc        String?   @db.Text // E.164 mobile number, encrypted
+  phoneHash       String?   @db.Char(64) // blindIndex(E.164, "user.phone"): lookups and abuse limits
+  phoneVerifiedAt DateTime?
   nameEnc         String?   @db.Text
   country         String?   @db.Char(2) // ISO 3166-1 alpha-2
   locale          String    @default("en") @db.VarChar(10)
@@ -34,8 +37,9 @@ model User {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime? // set when the user asks us to erase their data
 
-  sessions UserSession[]
-  reports  Report[]
+  sessions   UserSession[]
+  phoneCodes PhoneCode[]
+  reports    Report[]
   issues   Issue[]
   watches  IndicatorWatch[]
 
@@ -68,6 +72,33 @@ model LoginChallenge {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// One-time SMS codes: confirming a mobile number, and the text-message step of every sign-in.
+/// With Twilio Verify, Twilio holds the code and codeHash stays empty.
+model PhoneCode {
+  id         String           @id @default(cuid())
+  userId     String
+  purpose    PhoneCodePurpose
+  phoneEnc   String           @db.Text // the number the code was sent to
+  phoneHash  String           @db.Char(64)
+  codeHash   String?          @db.Char(64)
+  attempts   Int              @default(0)
+  ipHash     String?          @db.Char(64)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt])
+  @@index([phoneHash, createdAt])
+  @@index([createdAt])
+}
+
+enum PhoneCodePurpose {
+  VERIFY
+  LOGIN
 }
 
 model UserSession {
