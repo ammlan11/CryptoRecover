@@ -38,7 +38,7 @@ export function PhoneField({ label = "Mobile number", defaultValue }: { label?: 
   return (
     <div>
       <label className="label" htmlFor="phone">{label}</label>
-      <input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={40} className="field" placeholder="+94 77 123 4567" defaultValue={defaultValue} />
+      <input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={40} className="field" placeholder="+81 90 1234 5678" defaultValue={defaultValue} />
       <p className="fine" style={{ margin: "6px 0 0" }}>Start with your country code. Only our research team can see it, to contact you about your report.</p>
     </div>
   );
