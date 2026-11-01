@@ -7,12 +7,12 @@
     "build": "next build",
     "start": "next start -p 3001",
     "typecheck": "tsc --noEmit",
-    "create-owner": "tsx --conditions=react-server scripts/create-owner.ts",
-    "scan-pending": "tsx --conditions=react-server scripts/scan-pending.ts",
+    "create-owner": "tsx --env-file-if-exists=../../.env --conditions=react-server scripts/create-owner.ts",
+    "scan-pending": "tsx --env-file-if-exists=../../.env --conditions=react-server scripts/scan-pending.ts",
     "test": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
     "test:e2e": "node test/e2e/admin-smoke.mjs",
-    "wrap-keys": "tsx --conditions=react-server scripts/wrap-keys.ts"
+    "wrap-keys": "tsx --env-file-if-exists=../../.env --conditions=react-server scripts/wrap-keys.ts"
   },
   "dependencies": {
     "@kurotrace/core": "*",

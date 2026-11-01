@@ -7,10 +7,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "prisma generate",
-    "migrate": "prisma migrate deploy",
-    "migrate:dev": "prisma migrate dev",
-    "validate": "prisma validate",
+    "generate": "node --env-file-if-exists=../../.env ../../node_modules/prisma/build/index.js generate",
+    "migrate": "node --env-file-if-exists=../../.env ../../node_modules/prisma/build/index.js migrate deploy",
+    "migrate:dev": "node --env-file-if-exists=../../.env ../../node_modules/prisma/build/index.js migrate dev",
+    "validate": "node --env-file-if-exists=../../.env ../../node_modules/prisma/build/index.js validate",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
