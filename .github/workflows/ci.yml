@@ -196,7 +196,7 @@ jobs:
           node -e "const r=require('./zap/zap-report.json');const a=r.site.flatMap(s=>s.alerts).filter(a=>Number(a.riskcode)>=3);if(a.length){console.error('High-risk findings:',a.map(x=>x.name));process.exit(1)}console.log('No high-risk findings')"
       - name: Keep the ZAP report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zap-report
           path: zap/
