@@ -20,15 +20,17 @@ findings are published as warnings. The platform does **not** recover money and 
 
 ## Run locally
 
-Needs Node 22 and MySQL 8.
+Needs Node 22 and MySQL 8. One `.env` file at the repo root serves both apps, the
+database tools and the admin scripts.
 
 ```bash
-cp .env.example .env          # then generate real keys (see the comments in the file)
+cp .env.example .env          # then fill in DATABASE_URL and the two keys (see the comments in the file)
 npm install
 npm run db:generate
 npm run db:migrate             # applies packages/db/prisma/migrations
-npm run dev:web                # http://localhost:3000
+npm run dev:web                # http://localhost:3000 — emails (with their links) print in this terminal
 npm run dev:admin              # http://localhost:3001 (127.0.0.1 is allow-listed by default)
+npm run create-owner -w @kurotrace/admin -- --username yourname   # first admin account
 ```
 
 Checks run in CI on every pull request:
