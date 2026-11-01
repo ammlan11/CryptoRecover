@@ -25,6 +25,8 @@ model User {
   totpSecretEnc   String?   @db.Text
   totpEnabledAt   DateTime?
   totpLastStep    Int? // last accepted TOTP time step: refuses replayed codes
+  phoneEnc        String?   @db.Text // mobile number (E.164) given at sign-up, encrypted; for contacting the reporter
+  phoneHash       String?   @db.Char(64) // blindIndex(E.164, "user.phone"): lookups and abuse limits
   nameEnc         String?   @db.Text
   country         String?   @db.Char(2) // ISO 3166-1 alpha-2
   locale          String    @default("en") @db.VarChar(10)
@@ -34,8 +36,9 @@ model User {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime? // set when the user asks us to erase their data
 
-  sessions UserSession[]
-  reports  Report[]
+  sessions   UserSession[]
+  loginCodes LoginCode[]
+  reports    Report[]
   issues   Issue[]
   watches  IndicatorWatch[]
 
@@ -68,6 +71,23 @@ model LoginChallenge {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Emailed one-time codes: the second step of every sign-in.
+model LoginCode {
+  id         String    @id @default(cuid())
+  userId     String
+  codeHash   String    @db.Char(64) // keyed hash; the code itself is never stored
+  attempts   Int       @default(0)
+  ipHash     String?   @db.Char(64)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([ipHash, createdAt])
 }
 
 model UserSession {

@@ -53,6 +53,7 @@ Tick each item off as you set it. Items marked **required** must be done before 
 - [ ] **Required.** Run `age-keygen -o kurotrace-backup.key` and keep that file **offline**. Put the public key it prints (`age1…`) in `BACKUP_AGE_RECIPIENT`.
 
 ### Email (Postmark)
+Every log-in sends a sign-in code by email, so email delivery has to be reliable before launch.
 - [ ] **Required.** Create a Postmark account and verify the domain: add the DKIM and Return-Path DNS records.
 - [ ] **Required.** Set `EMAIL_PROVIDER=postmark`, `POSTMARK_SERVER_TOKEN`, and `EMAIL_FROM="Kuro Trace <no-reply@kurotrace.com>"`.
 - [ ] Add SPF and DMARC DNS records, starting with `v=DMARC1; p=quarantine`.

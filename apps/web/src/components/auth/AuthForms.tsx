@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import {
   continueAction,
   forgotAction,
+  resendLoginCodeAction,
   loginAction,
   resetAction,
   signupAction,
@@ -29,6 +30,17 @@ function Submit({ pending, children }: { pending: boolean; children: React.React
     <button type="submit" className="btn btn-navy" disabled={pending} style={{ width: "100%", minHeight: 52 }}>
       {pending ? "Please wait…" : children}
     </button>
+  );
+}
+
+/** Mobile number with country code, required on every account so the team can reach the reporter. */
+export function PhoneField({ label = "Mobile number", defaultValue }: { label?: string; defaultValue?: string }) {
+  return (
+    <div>
+      <label className="label" htmlFor="phone">{label}</label>
+      <input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={40} className="field" placeholder="+94 77 123 4567" defaultValue={defaultValue} />
+      <p className="fine" style={{ margin: "6px 0 0" }}>Start with your country code. Only our research team can see it, to contact you about your report.</p>
+    </div>
   );
 }
 
@@ -71,6 +83,7 @@ export function SignupForm() {
         <input id="password" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} className="field" />
         <PasswordHint />
       </div>
+      <PhoneField />
       <label className="check">
         <input type="checkbox" name="terms" required />
         <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>
@@ -83,19 +96,30 @@ export function SignupForm() {
   );
 }
 
-export function TwoStepForm({ next }: { next?: string }) {
+export function TwoStepForm({ next, hasApp }: { next?: string; hasApp: boolean }) {
   const [state, action, pending] = useActionState(twoStepAction, idle);
+  const [resent, resend, resending] = useActionState(resendLoginCodeAction, idle);
+  const label = hasApp ? "Code from the email or your authenticator app" : "Code from the email";
   return (
-    <form action={action} className="stack">
-      <input type="hidden" name="next" value={next ?? ""} />
-      <div>
-        <label className="label" htmlFor="code">6-digit code or a recovery code</label>
-        <input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={20} className="field" style={{ fontFamily: "var(--font-mono)", letterSpacing: ".2em", fontSize: 20 }} />
-      </div>
-      <Message state={state} />
-      <Submit pending={pending}>Verify</Submit>
-      <p className="fine" style={{ textAlign: "center" }}><Link href="/login">Start again</Link></p>
-    </form>
+    <div className="stack">
+      <form action={action} className="stack">
+        <input type="hidden" name="next" value={next ?? ""} />
+        <div>
+          <label className="label" htmlFor="code">{label}</label>
+          <input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={20} autoFocus className="field" style={{ fontFamily: "var(--font-mono)", letterSpacing: ".2em", fontSize: 20 }} />
+        </div>
+        <Message state={state} />
+        <Submit pending={pending}>Verify</Submit>
+      </form>
+      <form action={resend}>
+        <Message state={resent} />
+        <p className="fine" style={{ textAlign: "center", margin: 0 }}>
+          No email after a minute? Check spam, or <button type="submit" className="link-button" disabled={resending}>send a new code</button>
+        </p>
+      </form>
+      {hasApp && <p className="fine" style={{ textAlign: "center", margin: 0 }}>Lost your phone? You can also type one of your recovery codes.</p>}
+      <p className="fine" style={{ textAlign: "center", margin: 0 }}><Link href="/login">Start again</Link></p>
+    </div>
   );
 }
 
@@ -158,6 +182,7 @@ export function ContinueForm({ token, email }: { token: string; email: string })
         <input id="password" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} className="field" />
         <PasswordHint />
       </div>
+      <PhoneField />
       <label className="check">
         <input type="checkbox" name="terms" required />
         <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>

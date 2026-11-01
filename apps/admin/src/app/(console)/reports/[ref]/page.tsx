@@ -197,7 +197,7 @@ export default async function CasePage({ params }: { params: Promise<{ ref: stri
             <section className="card">
               <h2 className="sub">Reporter</h2>
               <p className="hint" style={{ marginTop: 0 }}>Account since {fmtDay(report.user?.createdAt)} · email {report.user?.emailVerifiedAt ? "confirmed" : "not confirmed"}</p>
-              <Form action={revealEmailAction}>{hidden}<button type="submit" className="btn btn-line btn-small">Show email (logged)</button></Form>
+              <Form action={revealEmailAction}>{hidden}<button type="submit" className="btn btn-line btn-small">Show email and phone (logged)</button></Form>
             </section>
           )}
           <Link href="/reports" className="hint">← Back to queue</Link>

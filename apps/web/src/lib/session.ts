@@ -17,9 +17,14 @@ const CHALLENGE_COOKIE = "__Host-2fa";
 
 export const currentSession = cache(async () => resolveSession((await cookies()).get(SESSION_COOKIE)?.value));
 
-export async function requireUser() {
+/**
+ * Every account page and action needs a session and a mobile number on file.
+ * Accounts from before numbers were required are sent to add one first.
+ */
+export async function requireUser(opts: { allowMissingPhone?: boolean } = {}) {
   const session = await currentSession();
   if (!session) redirect("/login");
+  if (!session.user.phoneHash && !opts.allowMissingPhone) redirect("/add-phone");
   return session;
 }
 

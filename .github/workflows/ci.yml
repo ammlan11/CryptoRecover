@@ -132,7 +132,10 @@ jobs:
       FIELD_ENCRYPTION_KEYS: k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       BLIND_INDEX_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
-      EMAIL_PROVIDER: none
+      # Emails are written to a file the browser test reads sign-in codes from (CI only).
+      EMAIL_PROVIDER: file
+      ALLOW_TEST_EMAIL: "true"
+      EMAIL_OUTBOX_FILE: /tmp/kurotrace-email.log
       EVIDENCE_STORAGE: local
       ALLOW_LOCAL_EVIDENCE: "true"
       EVIDENCE_LOCAL_DIR: /tmp/evidence
@@ -203,6 +206,7 @@ jobs:
         run: |
           tail -80 /tmp/web.log
           tail -80 /tmp/admin.log
+          grep -iE "error|fail|⨯" /tmp/web.log | tail -5 | tr -d '\r' | sed 's/^/::error title=web server::/' || true
 
   docker:
     runs-on: ubuntu-latest

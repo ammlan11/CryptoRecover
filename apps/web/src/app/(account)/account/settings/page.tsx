@@ -4,6 +4,7 @@ import { prisma } from "@kurotrace/db";
 import { ActionForm } from "@/components/account/ActionForm";
 import { requireUser } from "@/lib/session";
 import { userEmail } from "@/server/accounts";
+import { maskPhone, userPhone } from "@/server/phone";
 import { changePasswordAction, deleteAccountAction, disableTwoStepAction, revokeSessionAction, signOutEverywhereAction } from "../actions";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -18,6 +19,7 @@ function describeAgent(ua: string | null) {
 export default async function SettingsPage() {
   const session = await requireUser();
   const sessions = await prisma.userSession.findMany({ where: { userId: session.userId }, orderBy: { lastSeenAt: "desc" } });
+  const phone = userPhone(await prisma.user.findUniqueOrThrow({ where: { id: session.userId }, select: { id: true, phoneEnc: true } }));
   const remaining = session.user.totpEnabledAt ? await prisma.userRecoveryCode.count({ where: { userId: session.userId, usedAt: null } }) : 0;
 
   return (
@@ -30,10 +32,17 @@ export default async function SettingsPage() {
         </section>
 
         <section className="panel">
+          <h2 className="section-title" style={{ marginTop: 0 }}>Mobile number</h2>
+          <p style={{ marginTop: 0 }}>{phone ? maskPhone(phone) : "None"}. Only our research team can see it, to contact you about your reports.</p>
+          <Link href="/account/settings/phone" className="btn btn-line">Change number</Link>
+        </section>
+
+        <section className="panel">
           <h2 className="section-title" style={{ marginTop: 0 }}>Two-step sign-in</h2>
+          <p style={{ marginTop: 0 }}>Each time you log in, we email a code to your address. For extra protection, you can use an authenticator app instead.</p>
           {session.user.totpEnabledAt ? (
             <>
-              <p style={{ marginTop: 0 }}><span className="status status-ok">On</span> You&rsquo;ll be asked for a code from your authenticator app when you log in. {remaining} recovery {remaining === 1 ? "code" : "codes"} left.</p>
+              <p style={{ marginTop: 0 }}><span className="status status-ok">On</span> When you log in you can use a code from your authenticator app instead of the emailed code. {remaining} recovery {remaining === 1 ? "code" : "codes"} left.</p>
               <ActionForm action={disableTwoStepAction} className="stack">
                 <div>
                   <label className="label" htmlFor="pw-2fa">Your password, to turn it off</label>
@@ -44,8 +53,8 @@ export default async function SettingsPage() {
             </>
           ) : (
             <>
-              <p style={{ marginTop: 0 }}>Protect your account with a code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password and others).</p>
-              <Link href="/account/settings/two-step" className="btn btn-navy">Set up two-step sign-in</Link>
+              <p style={{ marginTop: 0 }}>An authenticator app (Google Authenticator, Microsoft Authenticator, 1Password and others) keeps working even if someone gets into your email, and gives you recovery codes.</p>
+              <Link href="/account/settings/two-step" className="btn btn-navy">Set up an authenticator app</Link>
             </>
           )}
         </section>

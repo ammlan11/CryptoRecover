@@ -42,3 +42,8 @@ export function decryptFile(blob: Buffer, aad: string) {
 export function ipHashFor(ip: string) {
   return blindIndex(ip, keys().indexKey, "session.ip");
 }
+
+/** Keyed hash for lookups and one-time codes. `context` keeps different uses unrelated. */
+export function indexFor(value: string, context: string) {
+  return blindIndex(value, keys().indexKey, context);
+}

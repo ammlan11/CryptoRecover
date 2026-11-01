@@ -1,11 +1,12 @@
 /**
  * Browser smoke test of the user terminal, run in CI against a production build and MySQL.
- * Signs up, sends a full report with evidence, messages the team, turns on two-step
+ * Signs up with a mobile number, logs in with an emailed code, sends a full report with evidence, messages the team, turns on two-step
  * sign-in and logs back in with a code. Fails loudly on any broken step.
  *
  *   BASE_URL=http://localhost:3000 MYSQL="mysql -h127.0.0.1 -uroot -proot demo_e2e" node test/e2e/smoke.mjs
  */
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -14,6 +15,12 @@ const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const EMAIL = `e2e-${Date.now()}@example.com`;
 const PASSWORD = "a long and memorable passphrase";
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(512, 3)]);
+const MAIL_FILE = process.env.EMAIL_OUTBOX_FILE ?? "/tmp/kurotrace-email.log";
+const lastSignInCode = () => {
+  const mails = readFileSync(MAIL_FILE, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const mail = mails.reverse().find((m) => m.to === EMAIL && / is your Kuro Trace sign-in code$/.test(m.subject));
+  return /code is:\s+(\d{6})/.exec(mail.text)[1];
+};
 const sql = (q) => execSync(`${process.env.MYSQL} -N -e "${q}"`).toString().trim();
 
 function totp(secret, timeMs) {
@@ -42,6 +49,14 @@ try {
   await page.goto(`${BASE}/signup`);
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
+  await page.fill("#phone", "077 123 4567");
+  await page.check("input[name=terms]");
+  await page.click("button[type=submit]");
+  await page.getByText("Start your mobile number with the country code").waitFor();
+  // React clears the form after a failed submit: fill it again with a valid number.
+  await page.fill("#email", EMAIL);
+  await page.fill("#password", PASSWORD);
+  await page.fill("#phone", "+94 77 123 4567");
   await page.check("input[name=terms]");
   await page.click("button[type=submit]");
   await page.getByText("Check your inbox").waitFor();
@@ -55,8 +70,16 @@ try {
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
   await page.click("button[type=submit]");
+  // Every sign-in has a second step: a code emailed to the account.
+  await page.waitForURL("**/login/two-step**");
+  await page.getByText(/We emailed a 6-digit code to e•••@example\.com/).waitFor();
+  await page.fill("#code", "000000");
+  await page.click("button:has-text('Verify')");
+  await page.getByText("That code didn't work").waitFor();
+  await page.fill("#code", lastSignInCode());
+  await page.click("button:has-text('Verify')");
   await page.waitForURL("**/account/reports");
-  step("log in");
+  step("sign up with a mobile number; log in with password + emailed code");
 
   // New report → five steps
   await page.click("text=+ New report");
@@ -130,13 +153,25 @@ try {
   await page.fill("#password", PASSWORD);
   await page.click("button[type=submit]");
   await page.waitForURL("**/login/two-step**");
+  await page.getByText("You can also use a code from your authenticator app").waitFor();
+  await page.fill("#code", lastSignInCode());
+  await page.click("button[type=submit]");
+  await page.waitForURL("**/account/reports");
+  await page.getByText(ref).waitFor();
+  step("logged back in with the emailed code");
+
+  await page.click("button:has-text('Log out')");
+  await page.waitForURL("**/login");
+  await page.fill("#email", EMAIL);
+  await page.fill("#password", PASSWORD);
+  await page.click("button[type=submit]");
+  await page.waitForURL("**/login/two-step**");
   // The code used to turn it on can't be replayed: wait for the next 30-second window.
   await page.waitForTimeout(30_000 - (Date.now() % 30_000) + 1_000);
   await page.fill("#code", totp(secret, Date.now()));
   await page.click("button[type=submit]");
   await page.waitForURL("**/account/reports");
-  await page.getByText(ref).waitFor();
-  step("logged back in with an authenticator code");
+  step("or with an authenticator app code instead");
 
   // Logged-out users can't see account pages
   const fresh = await (await browser.newContext()).newPage();
@@ -145,6 +180,12 @@ try {
   step("account pages require sign-in");
 
   console.log("\nAll end-to-end checks passed.");
+} catch (error) {
+  // Shows up as a GitHub annotation, so the failure is readable without downloading logs.
+  const text = await page.locator("main, body").first().innerText().catch(() => "");
+  const flat = (v) => String(v).replace(/\s+/g, " ").slice(0, 600);
+  console.log(`::error title=Browser test failed::${flat(error?.message ?? error)} | url=${page.url()} | page: ${flat(text)}`);
+  throw error;
 } finally {
   await browser.close();
 }
