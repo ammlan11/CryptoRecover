@@ -16,11 +16,11 @@ export class PhoneError extends Error {}
 
 export const phoneHashFor = (e164: string) => indexFor(e164, "user.phone");
 
-/** Accepts "+94 77 123 4567", "0094771234567" etc. Returns E.164, or an error people can act on. */
+/** Accepts "+81 90 1234 5678", "0081 90 1234 5678" etc. Returns E.164, or an error people can act on. */
 export function normalizePhone(raw: string): string {
   const input = raw.trim().replace(/^00/, "+");
   if (!input) throw new PhoneError("Enter your mobile number.");
-  if (!input.startsWith("+")) throw new PhoneError("Start your mobile number with the country code, for example +94 or +971.");
+  if (!input.startsWith("+")) throw new PhoneError("Start your mobile number with the country code, for example +81 for Japan.");
   const phone = parsePhoneNumberFromString(input);
   if (!phone || !phone.isValid()) throw new PhoneError("That doesn't look like a valid mobile number. Check the country code and digits.");
   const type = phone.getType();
@@ -33,7 +33,7 @@ export function protectPhone(userId: string, e164: string) {
   return { phoneEnc: encryptText(e164, aad.userPhone(userId)), phoneHash: phoneHashFor(e164) };
 }
 
-/** "+94 ••• ••• 567": enough to recognise, not enough to reuse. */
+/** "+81 ••• ••• 678": enough to recognise, not enough to reuse. */
 export function maskPhone(e164: string) {
   const p = parsePhoneNumberFromString(e164);
   const last = e164.slice(-3);
