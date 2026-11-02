@@ -1,15 +1,6 @@
 import Link from "next/link";
 import { SCAMS } from "@/content/scams";
-
-function ShieldMark() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M13 2l9 3.5v7c0 5.5-4 9.5-9 11.5-5-2-9-6-9-11.5v-7z" />
-      <circle cx="13" cy="12" r="1.6" fill="currentColor" />
-      <circle cx="13" cy="12" r="5" strokeDasharray="0 3.2" strokeLinecap="round" />
-    </svg>
-  );
-}
+import { Logo } from "./Logo";
 
 export function NoticeBar() {
   return (
@@ -24,9 +15,8 @@ export function SiteHeader() {
   return (
     <header className="wrap site-header">
       <div className="pill pill-main">
-        <Link href="/" className="brand" aria-label="Kuro Trace home">
-          <ShieldMark />
-          <span>Kuro Trace</span>
+        <Link href="/" className="brand">
+          <Logo tone="black" height={34} alt="Kuro Trace home" />
         </Link>
         <nav className="nav" aria-label="Main">
           <Link href="/scams">Crypto scams</Link>
@@ -50,7 +40,7 @@ export function SiteFooter() {
     <footer className="footer">
       <div className="wrap footer-grid">
         <div>
-          <span style={{ fontSize: 24, fontWeight: 700 }}>Kuro Trace</span>
+          <Logo tone="white" height={36} />
           <p className="muted" style={{ fontSize: 14, lineHeight: 1.6, margin: "12px 0 0" }}>
             Crypto scam research.
             <br />

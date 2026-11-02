@@ -13,8 +13,9 @@ export function Form({ action, children, className, reset }: { action: Action; c
     if (reset && state.status === "success") ref.current?.reset();
   }, [state, reset]);
   return (
-    <form ref={ref} action={formAction} className={className}>
-      <fieldset disabled={pending} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>{children}</fieldset>
+    <form ref={ref} action={formAction}>
+      {/* Layout classes go on the fieldset, which holds the fields, so gaps apply between them. */}
+      <fieldset disabled={pending} className={className} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>{children}</fieldset>
       {state.status !== "idle" && (
         <p className={`msg ${state.status}`} role={state.status === "error" ? "alert" : "status"}>
           {state.message}
