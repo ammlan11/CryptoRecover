@@ -14,7 +14,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ["@kurotrace/core", "@kurotrace/db", "@kurotrace/services"],
-  serverExternalPackages: ["@node-rs/argon2", "@prisma/client"],
+  serverExternalPackages: ["@node-rs/argon2", "@prisma/client", "nodemailer"],
   async headers() {
     const headers = securityHeaders({ admin: true, dev });
     return [{ source: "/:path*", headers: Object.entries(headers).map(([key, value]) => ({ key, value })) }];

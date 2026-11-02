@@ -39,7 +39,7 @@ export default async function StaffPage() {
                 <div className="hint" style={{ marginTop: 4 }}>{p.organisation ?? "In-house"} · last sign-in {fmt(p.lastLoginAt)}</div>
               </div>
               {p.id !== me.id && (
-                <div className="inline" style={{ flex: "0 0 auto" }}>
+                <div className="inline" style={{ flex: "0 1 auto", maxWidth: "100%" }}>
                   <Form action={resetStaffAction}><input type="hidden" name="staffId" value={p.id} /><button type="submit" className="btn btn-line btn-small">Reset password + authenticator</button></Form>
                   <Form action={toggleStaffAction}><input type="hidden" name="staffId" value={p.id} /><input type="hidden" name="disable" value={p.disabledAt ? "0" : "1"} /><button type="submit" className={`btn btn-small ${p.disabledAt ? "btn-line" : "btn-danger"}`}>{p.disabledAt ? "Enable" : "Disable"}</button></Form>
                 </div>

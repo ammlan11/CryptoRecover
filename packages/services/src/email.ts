@@ -1,10 +1,13 @@
 import "server-only";
 import { appendFileSync } from "node:fs";
+import { createTransport, type Transporter } from "nodemailer";
 import { siteUrl } from "./site";
 
 /**
  * Outgoing email. Providers:
  * - "postmark": production (POSTMARK_SERVER_TOKEN, EMAIL_FROM)
+ * - "smtp":     production with any mailbox, e.g. Hostinger Email (SMTP_HOST, SMTP_PORT,
+ *               SMTP_USER, SMTP_PASS, EMAIL_FROM). Always encrypted (TLS), certificate checked.
  * - "log":      development only; prints the message, including links, to the server log
  * - "memory":   tests; messages collect in `outbox`
  * - "none":     end-to-end tests; messages are dropped
@@ -18,6 +21,27 @@ export interface Email {
 }
 
 export const outbox: Email[] = [];
+
+let transport: Transporter | null = null;
+function smtp(): Transporter {
+  if (transport) return transport;
+  const host = process.env.SMTP_HOST, user = process.env.SMTP_USER, pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass || !process.env.EMAIL_FROM) throw new Error("SMTP_HOST, SMTP_USER, SMTP_PASS and EMAIL_FROM must be set");
+  const port = Number(process.env.SMTP_PORT ?? 465);
+  transport = createTransport({
+    host,
+    port,
+    secure: port === 465, // 465 = TLS from the start; 587 = STARTTLS, which we then require
+    requireTLS: port !== 465,
+    auth: { user, pass },
+    tls: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+    pool: true,
+    maxConnections: 3,
+    connectionTimeout: 10_000,
+    socketTimeout: 15_000,
+  });
+  return transport;
+}
 
 export async function sendEmail(email: Email): Promise<void> {
   const provider = process.env.EMAIL_PROVIDER ?? (process.env.NODE_ENV === "production" ? "postmark" : "log");
@@ -37,6 +61,10 @@ export async function sendEmail(email: Email): Promise<void> {
   if (provider === "log") {
     if (process.env.NODE_ENV === "production") throw new Error("EMAIL_PROVIDER=log is not allowed in production");
     console.info(`\n[email] to=${email.to}\nsubject: ${email.subject}\n${email.text}\n`);
+    return;
+  }
+  if (provider === "smtp") {
+    await smtp().sendMail({ from: process.env.EMAIL_FROM, to: email.to, subject: email.subject, text: email.text });
     return;
   }
   if (provider === "postmark") {

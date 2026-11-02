@@ -14,7 +14,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ["@kurotrace/core", "@kurotrace/db", "@kurotrace/services"],
-  serverExternalPackages: ["@node-rs/argon2", "@prisma/client"],
+  serverExternalPackages: ["@node-rs/argon2", "@prisma/client", "nodemailer"],
   experimental: {
     // Evidence uploads: up to 10 MB per file, 25 MB per request.
     serverActions: { bodySizeLimit: "26mb" },

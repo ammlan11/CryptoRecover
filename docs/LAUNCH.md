@@ -23,6 +23,9 @@ Every setting named here is listed in `.env.example`, with notes.
 | Deployment | One Docker image that runs non-root on a read-only filesystem. Docker Compose sets up Caddy (automatic HTTPS), MySQL on a private network, ClamAV, migrations and backups. | CI builds and runs it |
 | Backups | A nightly MySQL dump, encrypted to your public key, kept 30 days, with an optional off-site copy | CI does a real backup → restore → compare |
 | Security scan | Every pull request runs automatic checks: headers, cookies, caching of private pages, the admin IP gate (including spoofed IPs), exposed files, and an OWASP ZAP scan | CI |
+| Mobile | Every public, account and admin page is loaded at 360, 390 and 768px wide; any page that scrolls sideways fails the build, naming the element | CI + screenshots |
+| Admin lockdown | Three locks: Caddy refuses IPs outside `ADMIN_IP_RANGES`; the app checks `ADMIN_ALLOWED_IPS` again; without a staff session every admin address goes to sign-in before any page runs. A test tries every admin page and download with no cookie and with a forged one | CI |
+| Attack traffic | Scanner probes (WordPress, PHP, `.env`, `.git`, phpMyAdmin…) are dropped at Caddy without a reply; per-address flood limit (429); optional Cloudflare-only mode so nobody can bypass Cloudflare via the server IP | Caddy config validated + unit tests |
 
 Built in earlier phases and still covered by tests:
 
@@ -38,13 +41,29 @@ Built in earlier phases and still covered by tests:
 
 Tick each item off as you set it. Items marked **required** must be done before real users arrive.
 
-### Domain and hosting
-- [ ] **Required.** Buy the domain, e.g. `kurotrace.com`.
-- [ ] **Required.** Get a server. One small VPS is enough to start: 2 vCPU, 4 GB RAM, Ubuntu 24.04, with Docker installed.
-- [ ] **Required.** Add DNS A records pointing `kurotrace.com`, `www.kurotrace.com` and `admin.kurotrace.com` at the server.
+### Hosting (Hostinger VPS)
+This project needs Docker (MySQL 8, the virus scanner and the two apps run as containers), so it runs on a **Hostinger VPS**, not on shared or website-builder hosting. Hostinger's VPS supports Docker and Docker Compose.
+- [ ] **Required.** Choose a VPS with at least 2 vCPU and 8 GB RAM; the virus scanner alone uses about 1.5 GB. Pick **Ubuntu 24.04**, and the data centre nearest most of your visitors.
+- [ ] **Required.** Turn on **two-factor login** for your Hostinger account. Whoever controls that account controls your domain, email and server.
+- [ ] **Required.** Log in with an **SSH key**, not a password. Create a normal user with sudo, then run `sudo bash deploy/harden-server.sh <user>` on the server. It sets up the firewall, keys-only SSH, fail2ban and automatic security updates.
+- [ ] In hPanel → VPS → **Firewall**, allow only ports 22, 80 and 443. This is a second firewall in front of the server's own.
+
+### Domain and Cloudflare (free plan)
+Brand-new domains get scanned within hours of going live. Cloudflare absorbs most of that before it reaches your server, and hides the server's IP address.
+- [ ] **Required.** Buy the domain at Hostinger. Turn on **domain lock**, privacy protection and auto-renew.
+- [ ] **Required.** Add the domain to a free Cloudflare account, then change the nameservers in hPanel → Domains → DNS / Nameservers to the two Cloudflare gives you. From then on, all DNS records (website and email) are managed in Cloudflare.
+- [ ] **Required.** In Cloudflare DNS, add A records for `kurotrace.com`, `www` and `admin` pointing at the VPS IP, all with the **orange cloud (proxied)**.
+- [ ] **Required.** Cloudflare settings:
+  - SSL/TLS → **Full (strict)**
+  - Security → WAF → turn on the free **managed rules**
+  - **Bot Fight Mode**: on
+  - Security level: medium
+  - Leave **"Always Use HTTPS" off**. The server already redirects to HTTPS, and Cloudflare's redirect would block certificate renewal.
+- [ ] **Required.** Add one Cloudflare **rate-limiting rule** (the free plan allows one): requests to `/login` or `/signup` above 20 per 10 seconds from one IP get blocked for 10 seconds.
+- [ ] **Required.** On the server, run `bash deploy/cloudflare-ips.sh` and put the two lines it prints (`EDGE_IPS=…`, `TRUSTED_PROXIES=…`) in `deploy/.env`. The server will then only answer Cloudflare, so attackers can't get around Cloudflare by using the server's IP.
 - [ ] **Required.** Set `SITE_DOMAIN`, `ADMIN_DOMAIN`, `NEXT_PUBLIC_SITE_URL=https://kurotrace.com` and `ADMIN_URL=https://admin.kurotrace.com`.
-- [ ] **Required.** Set `ADMIN_ALLOWED_IPS` to your office or VPN IP addresses only. The admin is invisible to everyone else.
-- [ ] Optional: put the site behind Cloudflare. Then set `TRUSTED_IP_HEADER=cf-connecting-ip`, and keep the admin domain *not* proxied, or add Cloudflare Access in front of it.
+- [ ] **Required.** Set **both** `ADMIN_IP_RANGES` (space-separated) and `ADMIN_ALLOWED_IPS` (comma-separated) to your office or VPN IP addresses only. Everyone else gets a blank "not found" from the admin address.
+- [ ] Under attack? In Cloudflare, switch on **"I'm Under Attack" mode**. Visitors get a short browser check, and floods stop at Cloudflare.
 
 ### Secrets (generate on a trusted computer)
 - [ ] **Required.** Generate `FIELD_ENCRYPTION_KEYS` and `BLIND_INDEX_KEY`: run `openssl rand -base64 32` once for each. **Keep an offline copy.** Without these keys, the encrypted data can't be recovered.
@@ -52,11 +71,22 @@ Tick each item off as you set it. Items marked **required** must be done before 
 - [ ] **Required.** Set `MYSQL_ROOT_PASSWORD` and `MYSQL_APP_PASSWORD` to long random values.
 - [ ] **Required.** Run `age-keygen -o kurotrace-backup.key` and keep that file **offline**. Put the public key it prints (`age1…`) in `BACKUP_AGE_RECIPIENT`.
 
-### Email (Postmark)
-Every log-in sends a sign-in code by email, so email delivery has to be reliable before launch.
-- [ ] **Required.** Create a Postmark account and verify the domain: add the DKIM and Return-Path DNS records.
-- [ ] **Required.** Set `EMAIL_PROVIDER=postmark`, `POSTMARK_SERVER_TOKEN`, and `EMAIL_FROM="Kuro Trace <no-reply@kurotrace.com>"`.
-- [ ] Add SPF and DMARC DNS records, starting with `v=DMARC1; p=quarantine`.
+### Email (Hostinger Email)
+Every log-in sends a sign-in code by email, so delivery has to be reliable before launch.
+- [ ] **Required.** In hPanel, create a mailbox just for the site, e.g. `no-reply@kurotrace.com`, with a long random password.
+- [ ] **Required.** Set:
+  - `EMAIL_PROVIDER=smtp`
+  - `SMTP_HOST=smtp.hostinger.com`
+  - `SMTP_PORT=465`
+  - `SMTP_USER=no-reply@kurotrace.com`
+  - `SMTP_PASS=…`
+  - `EMAIL_FROM="Kuro Trace <no-reply@kurotrace.com>"`
+- [ ] **Required.** Copy the **MX**, **SPF** and **DKIM** records from hPanel → Emails → DNS settings into Cloudflare DNS, all as **DNS only** (grey cloud).
+- [ ] **Required.** Add a **DMARC** record, so scammers can't send emails that pretend to come from your domain. This matters for a scam-reporting brand: impostors will try it.
+  - Name `_dmarc`, value `v=DMARC1; p=quarantine; rua=mailto:dmarc@kurotrace.com`.
+  - After a few weeks with no problems, change `p=quarantine` to `p=reject`.
+- [ ] Check deliverability: send yourself a sign-in code at Gmail and Outlook. It should land in the inbox, and the message details should show SPF, DKIM and DMARC as **PASS**.
+- [ ] Sending limits: Hostinger allows about 1,000 emails a day on Business Starter and 3,000 on Business Premium. If you regularly pass about half of that, switch to Postmark (`EMAIL_PROVIDER=postmark`). The SPF and DKIM steps are the same, using Postmark's records.
 
 ### Evidence storage (S3 or Cloudflare R2)
 - [ ] **Required.** Create a **private** bucket with no public access, and turn on versioning.
@@ -82,7 +112,7 @@ Every log-in sends a sign-in code by email, so email delivery has to be reliable
 
 ## Part C: launch day
 
-1. On the server, copy `.env.example` to `deploy/.env`, fill in every Part B value, and run `chmod 600 deploy/.env`.
+1. On the server, after running `deploy/harden-server.sh`, copy `.env.example` to `deploy/.env`, fill in every Part B value, and run `chmod 600 deploy/.env`.
 2. Start everything with `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build`. Migrations run automatically, and HTTPS certificates are issued within a minute.
 3. Create the first owner account: `docker compose -f deploy/docker-compose.yml run --rm admin node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/create-owner.ts --username <you>`. Then scan the QR link it prints with your authenticator app.
 4. Sign in at `https://admin.kurotrace.com` from an allowed IP. Under **My account**, add **two** security keys, then set `STAFF_SECURITY_KEY_ONLY=true` and restart.
@@ -97,3 +127,4 @@ Every log-in sends a sign-in code by email, so email delivery has to be reliable
 - [ ] Every month: restore a backup to check it works, and review the admin audit log and the staff list.
 - [ ] Every year: rotate the field encryption key. Add `k2:` first in `FIELD_ENCRYPTION_KEYS` (or re-wrap with KMS). Old data stays readable.
 - [ ] Watch Dependabot pull requests. CI must be green before you merge.
+- [ ] Every week for the first month: look at Cloudflare → Security → Events, to see what's being blocked, and at the admin audit log for failed staff sign-ins.

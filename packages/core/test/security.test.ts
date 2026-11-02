@@ -96,3 +96,16 @@ describe("audit hash chain", () => {
     expect(verifyAuditChain([a, c])).toBe(1); // a deleted row breaks the chain
   });
 });
+
+describe("flood limit", () => {
+  it("allows a burst up to the limit, then refuses until the window resets", async () => {
+    const { RateLimiter } = await import("../src/rate-limit");
+    let now = 0;
+    const limiter = new RateLimiter(3, 60_000, () => now);
+    expect([1, 2, 3].map(() => limiter.check("1.2.3.4").allowed)).toEqual([true, true, true]);
+    expect(limiter.check("1.2.3.4")).toMatchObject({ allowed: false, retryAfterMs: 60_000 });
+    expect(limiter.check("5.6.7.8").allowed).toBe(true); // other people unaffected
+    now = 60_001;
+    expect(limiter.check("1.2.3.4").allowed).toBe(true);
+  });
+});

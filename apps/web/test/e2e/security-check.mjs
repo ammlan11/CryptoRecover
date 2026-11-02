@@ -117,4 +117,25 @@ ok("source, config and stored files are not reachable; TRACE disabled");
   ok("admin: no-index, no-store, no-referrer, framing blocked, console requires sign-in");
 }
 
+// ── Admin: bookmarks, typed URLs and forged cookies never reach a page ──
+{
+  const inside = { "x-forwarded-for": "127.0.0.1" };
+  const paths = ["/", "/reports", "/reports?assignee=me", "/reports/DM-ABCDE", "/reports/DM-ABCDE/evidence/x", "/indicators", "/leads", "/leads/export", "/issues", "/audit", "/staff", "/account", "/reauth?next=/staff", "/does-not-exist", "/api/anything"];
+  for (const path of paths) {
+    for (const [label, cookie] of [["no cookie", null], ["forged cookie", "__Host-staff=forged-session-value-that-is-not-real"]]) {
+      const res = await get(`${ADMIN}${path}`, { headers: { ...inside, ...(cookie ? { cookie } : {}) } });
+      const toLogin = [302, 303, 307, 308].includes(res.status) && /\/login$/.test(new URL(res.headers.get("location") ?? "", ADMIN).pathname);
+      assert.ok(toLogin || res.status === 404, `admin ${path} with ${label} must go to sign-in or 404 (got ${res.status})`);
+      if (res.status === 200) assert.fail(`admin ${path} rendered without a session`);
+    }
+  }
+  // Writes without a session are refused outright.
+  const post = await get(`${ADMIN}/staff`, { method: "POST", headers: { ...inside, "content-type": "text/plain" }, body: "x" });
+  assert.equal(post.status, 404, "POST without a session");
+  // Even from the right IP, the sign-in page itself is never cached or indexed.
+  const login = await get(`${ADMIN}/login`, { headers: inside });
+  assert.match(login.headers.get("cache-control") ?? "", /no-store/);
+  ok("admin: every page and download needs a live session; bookmarks and forged cookies go to sign-in");
+}
+
 console.log("\nAll security checks passed.");
