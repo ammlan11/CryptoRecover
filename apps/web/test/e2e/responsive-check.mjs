@@ -122,6 +122,10 @@ try {
     await page.close();
     for (const p of [...ADMIN_PAGES, ...(caseHref ? [caseHref] : [])]) await check(adminCtx, ADMIN, p, "admin");
   }
+} catch (error) {
+  const flat = (v) => String(v).replace(/\s+/g, " ").slice(0, 700);
+  console.log(`::error title=Phone-size check crashed::${flat(error?.message ?? error)}`);
+  throw error;
 } finally {
   await browser.close();
 }
