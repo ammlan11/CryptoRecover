@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SCAMS } from "@/content/scams";
 import { Logo } from "./Logo";
+import { MobileMenu } from "./MobileMenu";
 
 export function NoticeBar() {
   return (
@@ -18,6 +19,7 @@ export function SiteHeader() {
         <Link href="/" className="brand">
           <Logo tone="black" height={34} alt="Kuro Trace home" />
         </Link>
+        <MobileMenu />
         <nav className="nav" aria-label="Main">
           <Link href="/scams">Crypto scams</Link>
           <Link href="/#check">Check a wallet</Link>
