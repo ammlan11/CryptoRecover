@@ -42,7 +42,9 @@ async function check(context, base, path, label) {
   const page = await context.newPage();
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: 860 });
-    await page.goto(`${base}${path}`, { waitUntil: "networkidle" });
+    // "load", not "networkidle": the bot-check widget keeps a connection open.
+    await page.goto(`${base}${path}`, { waitUntil: "load" });
+    await page.waitForTimeout(600); // let fonts and late layout settle
     const result = await page.evaluate(() => {
       const vw = document.documentElement.clientWidth;
       const overflow = document.documentElement.scrollWidth - vw;
