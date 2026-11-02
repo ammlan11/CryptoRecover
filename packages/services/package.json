@@ -19,11 +19,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-kms": "^3",
     "@aws-sdk/client-s3": "^3",
     "@kurotrace/core": "*",
     "@kurotrace/db": "*",
-    "server-only": "^0.0.1",
-    "@aws-sdk/client-kms": "^3"
+    "@types/nodemailer": "8.0.2",
+    "nodemailer": "10.1.7",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/node": "^22",
