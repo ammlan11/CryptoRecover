@@ -34,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 "@id": `${siteUrl}/#org`,
                 name: "Kuro Trace",
                 url: siteUrl,
+                logo: `${siteUrl}/brand/kuro-trace-logo-512.png`,
                 description: "Crypto scam research: reports are studied by investigators to warn others.",
               },
               { "@type": "WebSite", "@id": `${siteUrl}/#website`, name: "Kuro Trace", url: siteUrl, publisher: { "@id": `${siteUrl}/#org` } },

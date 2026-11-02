@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Logo } from "@/components/Logo";
 import { LoginForm } from "@/components/AuthForms";
 import { currentStaff } from "@/lib/session";
 
@@ -9,7 +10,8 @@ export default async function LoginPage() {
   return (
     <main className="auth">
       <div className="auth-card">
-        <h1>Kuro Trace admin</h1>
+        <div style={{ marginBottom: 20 }}><Logo tone="black" height={30} /></div>
+        <h1>Admin terminal</h1>
         <p className="auth-tag">AUTHORISED STAFF ONLY · EVERY ACTION IS LOGGED</p>
         <LoginForm />
       </div>

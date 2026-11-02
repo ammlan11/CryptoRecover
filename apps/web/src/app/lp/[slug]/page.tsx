@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SmallOrb } from "@/components/Orb";
+import { Logo } from "@/components/Logo";
 import { StartReportForm } from "@/components/forms/StartReportForm";
 import { AdTags } from "@/components/ads/AdTags";
 import { CAMPAIGNS, getCampaign } from "@/content/campaigns";
@@ -40,7 +41,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
     <>
       <AdTags />
       <header className="wrap" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, padding: "20px 0", flexWrap: "wrap" }}>
-        <div className="pill" style={{ padding: "12px 20px", fontSize: 22, fontWeight: 700 }}>Kuro Trace</div>
+        <div className="pill" style={{ padding: "12px 20px" }}><Logo tone="black" height={28} /></div>
         <span className="mono" style={{ fontSize: 12, color: "var(--on-dark-muted)" }}>Free · Confidential · No recovery fees, ever</span>
       </header>
 

@@ -1,4 +1,5 @@
 import { prisma } from "@kurotrace/db";
+import { Logo } from "@/components/Logo";
 import { NavLink } from "@/components/NavLink";
 import { can, ROLE_LABEL } from "@/lib/permissions";
 import { requireStaff } from "@/lib/session";
@@ -15,8 +16,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
     <div className="shell">
       <aside className="side">
         <div className="side-brand">
-          <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true" fill="none" stroke="#fff" strokeWidth="2"><path d="M13 2l9 3.5v7c0 5.5-4 9.5-9 11.5-5-2-9-6-9-11.5v-7z" /></svg>
-          Kuro Trace
+          <Logo tone="white" height={26} />
         </div>
         <div className="side-tag">ADMIN TERMINAL</div>
         <nav aria-label="Admin">
