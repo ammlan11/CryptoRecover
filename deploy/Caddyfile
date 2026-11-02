@@ -1,26 +1,76 @@
-# HTTPS certificates are issued and renewed automatically.
+# Front door for the server: HTTPS (certificates issued and renewed automatically),
+# junk-traffic filtering, and the first IP lock for the admin terminal.
+#
+# Settings come from deploy/.env:
+#   SITE_DOMAIN, ADMIN_DOMAIN       your domains
+#   ADMIN_IP_RANGES                 space-separated IPs/ranges allowed to reach the admin
+#   EDGE_IPS                        who may connect at all: "0.0.0.0/0 ::/0" (anyone), or
+#                                   Cloudflare's ranges when the site sits behind Cloudflare,
+#                                   so attackers can't bypass Cloudflare by hitting the server IP
+#   TRUSTED_PROXIES                 Cloudflare's ranges when behind Cloudflare (same list),
+#                                   so the real visitor IP is read from CF-Connecting-IP
 {
 	servers {
 		protocols h1 h2 h3
+		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+		client_ip_headers CF-Connecting-IP X-Forwarded-For
+		timeouts {
+			read_header 10s
+			idle 2m
+		}
 	}
 }
 
+# Shared filters for every site block.
+(guard) {
+	# Connections from outside the allowed edge are dropped without an answer.
+	@not_edge not remote_ip {$EDGE_IPS:0.0.0.0/0 ::/0}
+	abort @not_edge
+
+	# Automated scanners probe for WordPress, PHP, leaked config and admin panels.
+	# None of these exist here, so close the connection instead of doing any work.
+	@scanners path /wp-* /wordpress* /xmlrpc.php *.php *.asp *.aspx *.jsp /cgi-bin/* /.env* /.git* /.svn* /.aws* /.DS_Store /phpmyadmin* /pma* /mysql* /administrator* /vendor/* /server-status /actuator* /config.json /backup* *.sql *.bak *.zip
+	abort @scanners
+
+	# Remove headers that could carry a forged visitor address to the app.
+	request_header -X-KT-Client-IP
+	header -Server
+}
+
 {$SITE_DOMAIN} {
+	import guard
+	@admin_probe path /admin*
+	abort @admin_probe
 	encode zstd gzip
 	request_body {
 		max_size 30MB
 	}
-	reverse_proxy web:3000
+	reverse_proxy web:3000 {
+		header_up X-KT-Client-IP {client_ip}
+	}
 }
 
 www.{$SITE_DOMAIN} {
+	import guard
 	redir https://{$SITE_DOMAIN}{uri} permanent
 }
 
-# The admin app itself refuses every IP outside ADMIN_ALLOWED_IPS with a 404.
+# Admin terminal. First lock here: anyone outside ADMIN_IP_RANGES gets a plain 404
+# and the request never reaches the app. Second lock: the app checks ADMIN_ALLOWED_IPS
+# again. Third: staff sign-in with password + authenticator or security key.
 {$ADMIN_DOMAIN} {
+	import guard
+	@outsiders not client_ip {$ADMIN_IP_RANGES}
+	respond @outsiders 404 {
+		close
+	}
 	request_body {
 		max_size 1MB
 	}
-	reverse_proxy admin:3001
+	reverse_proxy admin:3001 {
+		header_up X-KT-Client-IP {client_ip}
+	}
 }
+
+# Requests for the bare server IP or unknown hostnames get no site: Caddy has no
+# certificate for them (HTTPS fails) and no route (plain HTTP gets an empty reply).

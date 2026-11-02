@@ -33,5 +33,7 @@ export class RateLimiter {
 
   private sweep(now: number) {
     for (const [key, entry] of this.hits) if (entry.resetAt <= now) this.hits.delete(key);
+    // Under a flood from very many addresses, cap memory rather than grow without limit.
+    if (this.hits.size > 100_000) this.hits.clear();
   }
 }

@@ -22,8 +22,8 @@ x-app: &app
     DATABASE_URL: mysql://kurotrace_app:${MYSQL_APP_PASSWORD:?set MYSQL_APP_PASSWORD}@mysql:3306/kurotrace
     CLAMAV_HOST: clamav
     CLAMAV_PORT: "3310"
-    # Caddy appends the real visitor IP as the last X-Forwarded-For entry.
-    TRUSTED_IP_HEADER: x-forwarded-for
+    # Caddy works out the real visitor IP (through Cloudflare if used) and sends it here.
+    TRUSTED_IP_HEADER: x-kt-client-ip
     HOME: /tmp
   restart: unless-stopped
   # Read-only container: only /tmp and Next.js's cache folders are writable.
@@ -59,7 +59,7 @@ services:
       DATABASE_URL: mysql://kurotrace_app:${MYSQL_APP_PASSWORD}@mysql:3306/kurotrace
       CLAMAV_HOST: clamav
       CLAMAV_PORT: "3310"
-      TRUSTED_IP_HEADER: x-forwarded-for
+      TRUSTED_IP_HEADER: x-kt-client-ip
       HOME: /tmp
       PORT: "3001"
     networks: [internal, egress, edge]
@@ -131,6 +131,9 @@ services:
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN}
       ADMIN_DOMAIN: ${ADMIN_DOMAIN:?set ADMIN_DOMAIN}
+      ADMIN_IP_RANGES: ${ADMIN_IP_RANGES:?set ADMIN_IP_RANGES (space-separated IPs allowed to reach the admin)}
+      EDGE_IPS: ${EDGE_IPS:-0.0.0.0/0 ::/0}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
