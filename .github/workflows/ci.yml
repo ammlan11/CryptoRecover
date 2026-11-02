@@ -188,6 +188,21 @@ jobs:
           WEB_URL: http://localhost:3000
           ADMIN_URL: http://localhost:3001
         run: node apps/web/test/e2e/security-check.mjs
+      - name: Phone-size layout check (every page, signed out, signed in, admin)
+        env:
+          WEB_URL: http://localhost:3000
+          ADMIN_URL: http://localhost:3001
+          OWNER_PASSWORD: e2e owner passphrase long
+          OWNER_TOTP_SECRET: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+          RESPONSIVE_SHOTS: responsive
+        run: node apps/web/test/e2e/responsive-check.mjs
+      - name: Keep the phone-size screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: phone-screenshots
+          path: responsive/
+          if-no-files-found: ignore
       - name: OWASP ZAP baseline scan (passive)
         run: |
           mkdir -p zap && chmod 777 zap

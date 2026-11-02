@@ -173,6 +173,12 @@ img, svg { max-width: 100%; }
 .sticky-cta { position: sticky; bottom: 0; z-index: 20; background: rgba(1, 7, 32, .94); border-top: 1px solid var(--line-dark); padding: 10px 16px; backdrop-filter: blur(6px); }
 .sticky-cta .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .sticky-cta .btn { min-height: 44px; font-size: 12.5px; }
+@media (max-width: 600px) {
+  /* On phones: one slim full-width button, clear of the iPhone home bar, so it never hides the page. */
+  .sticky-cta { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+  .sticky-cta span { display: none; }
+  .sticky-cta .btn { width: 100%; justify-content: center; }
+}
 
 /* Article pages */
 .article { max-width: 820px; }
@@ -231,7 +237,7 @@ img, svg { max-width: 100%; }
 .auth-lead { color: var(--ink-muted); line-height: 1.55; margin: 8px 0 22px; }
 .auth-card a:not(.btn) { color: var(--blue); text-decoration: underline; }
 .auth-foot { text-align: center; color: var(--on-dark-muted); font-size: 13px; padding: 0 16px 24px; }
-.stack { display: grid; gap: 16px; }
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--ink); }
 .check input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: var(--navy-900); }
 .check.boxed { padding: 16px; border: 1px solid var(--card-line); border-radius: 8px; }

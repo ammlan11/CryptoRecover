@@ -46,8 +46,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
       </header>
 
       <main>
-        <section className="wrap" style={{ position: "relative", display: "flex", flexWrap: "wrap", gap: 56, alignItems: "center", padding: "40px 0 80px" }}>
-          <div style={{ position: "absolute", left: "28%", top: "50%", width: 640, transform: "translate(-50%, -50%)", pointerEvents: "none" }}>
+        <section className="wrap" style={{ position: "relative", display: "flex", flexWrap: "wrap", gap: 56, alignItems: "center", padding: "40px 0 80px", overflowX: "clip" }}>
+          <div style={{ position: "absolute", left: "28%", top: "50%", width: "min(640px, 100%)", transform: "translate(-50%, -50%)", pointerEvents: "none" }}>
             <SmallOrb opacity={0.3} core={false} />
           </div>
           <div style={{ position: "relative", flex: "999 1 520px", minWidth: 0 }}>
