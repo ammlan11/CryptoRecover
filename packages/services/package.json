@@ -24,7 +24,7 @@
     "@kurotrace/core": "*",
     "@kurotrace/db": "*",
     "@types/nodemailer": "8.0.2",
-    "nodemailer": "10.1.7",
+    "nodemailer": "10.3.1",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
