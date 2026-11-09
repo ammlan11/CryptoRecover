@@ -31,6 +31,7 @@ npm run db:migrate             # applies packages/db/prisma/migrations
 npm run dev:web                # http://localhost:3000 — emails (with their links) print in this terminal
 npm run dev:admin              # http://localhost:3001 (127.0.0.1 is allow-listed by default)
 npm run create-owner -w @kurotrace/admin -- --username yourname   # first admin account
+npm run demo                   # or: demo admin + demo user with known passwords and sample reports (local only)
 ```
 
 Checks run in CI on every pull request:
