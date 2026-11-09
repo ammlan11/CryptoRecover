@@ -92,6 +92,14 @@ jobs:
         run: npm run test:integration -w @kurotrace/web
       - name: Integration tests (admin — staff sign-in, roles, cases, exports)
         run: npm run test:integration -w @kurotrace/admin
+      - name: Demo accounts (npm run demo is repeatable and refuses live servers)
+        run: |
+          npm run demo > /tmp/demo1.log
+          npm run demo > /tmp/demo2.log
+          grep -q "Demo ready" /tmp/demo2.log
+          n=$(MYSQL_PWD=root mysql -h 127.0.0.1 -u root -N -e "SELECT COUNT(*) FROM demo_test.Report r JOIN demo_test.User u ON u.id = r.userId WHERE r.status <> 'DRAFT'")
+          echo "demo reports: $n"; [ "$n" -ge 3 ]
+          if NEXT_PUBLIC_SITE_URL=https://kurotrace.com npm run demo; then echo "demo ran against a live URL"; exit 1; fi
       - name: Backup and restore drill (encrypted dump → restore → compare)
         env:
           MYSQL_HOST: 127.0.0.1
