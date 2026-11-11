@@ -95,7 +95,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
               </details>
               <details>
                 <summary>Who sees my report?</summary>
-                <p>Our in-house team and private investigators. We never publish your name.</p>
+                <p>Our in house team and private investigators. We never publish your name.</p>
               </details>
             </div>
           </div>
