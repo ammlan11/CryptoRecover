@@ -27,5 +27,14 @@ mv "$OUT.partial" "$OUT"
 sha256sum "$OUT" > "$OUT.sha256"
 echo "backup written: $OUT ($(du -h "$OUT" | cut -f1))"
 
+# Evidence files (already encrypted by the app; encrypted again for the backup).
+if [ -d /evidence ] && [ -n "$(ls -A /evidence 2>/dev/null)" ]; then
+  EV="$DIR/evidence-${STAMP}.tar.gz.age"
+  tar -C /evidence -czf - . | "$AGE" -r "$BACKUP_AGE_RECIPIENT" -o "$EV.partial"
+  mv "$EV.partial" "$EV"
+  sha256sum "$EV" > "$EV.sha256"
+  echo "evidence backup written: $EV ($(du -h "$EV" | cut -f1))"
+fi
 
-find "$DIR" -name "${DB}-*.sql.gz.age*" -mtime +"$KEEP" -delete
+
+find "$DIR" \( -name "${DB}-*.sql.gz.age*" -o -name "evidence-*.tar.gz.age*" \) -mtime +"$KEEP" -delete

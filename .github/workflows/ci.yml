@@ -269,3 +269,18 @@ jobs:
           ADMIN_DOMAIN: admin.example.com
           ADMIN_IP_RANGES: 203.0.113.10
         run: touch deploy/.env && docker compose -f deploy/docker-compose.yml config -q
+
+  deploy-rehearsal:
+    # The whole live setup (Caddy, both apps, MySQL, ClamAV, backups) on this runner.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install age (backup keys)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age > /dev/null
+      - name: Rehearse the deployment
+        run: bash deploy/rehearse.sh
+      - name: Logs on failure
+        if: failure()
+        working-directory: deploy
+        run: docker compose logs --tail 80

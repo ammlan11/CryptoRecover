@@ -29,6 +29,8 @@ x-app: &app
   # Read-only container: only /tmp and Next.js's cache folders are writable.
   read_only: true
   tmpfs: [/tmp, /app/apps/web/.next/cache, /app/apps/admin/.next/cache]
+  # Evidence files (encrypted by the app before they're written here).
+  volumes: [evidence-data:/data/evidence]
   security_opt: ["no-new-privileges:true"]
   cap_drop: [ALL]
   depends_on:
@@ -102,7 +104,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?set BACKUP_AGE_RECIPIENT (age public key)}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
-    volumes: [backups:/backups]
+    volumes: [backups:/backups, evidence-data:/evidence:ro]
     depends_on:
       mysql: { condition: service_healthy }
     networks: [internal]
@@ -150,6 +152,7 @@ networks:
 
 volumes:
   mysql-data:
+  evidence-data:
   clamav-db:
   caddy-data:
   caddy-config:

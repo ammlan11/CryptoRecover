@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time hardening for a fresh Ubuntu 22.04/24.04 VPS (e.g. Hostinger VPS).
+# One-time hardening for a fresh Ubuntu 22.04/24.04 VPS (Contabo, Hostinger or any other).
 # Run as root AFTER you can log in with an SSH key as a normal sudo user:
 #   sudo bash deploy/harden-server.sh <your-sudo-username>
 #
