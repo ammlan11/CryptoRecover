@@ -46,7 +46,7 @@ export function SiteFooter() {
           <p className="muted" style={{ fontSize: 14, lineHeight: 1.6, margin: "12px 0 0" }}>
             Crypto scam research.
             <br />
-            [Legal entity] · [Registered address]
+            Flaxhome, 8 Broadway, Duffield, Derbyshire, England, DE56 4BT
           </p>
         </div>
         <nav className="footer-col" aria-label="Popular topics">
@@ -69,7 +69,7 @@ export function SiteFooter() {
         </nav>
       </div>
       <div className="wrap footer-base">
-        <span>© {new Date().getFullYear()} [Entity]. We never ask for payment, a recovery fee or your seed phrase.</span>
+        <span>© 2024 Kuro Trace. All rights reserved.</span>
       </div>
     </footer>
   );

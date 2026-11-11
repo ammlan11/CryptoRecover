@@ -67,12 +67,12 @@ export default function HomePage() {
           <div><div className="eyebrow">Research</div><div className="trust-value">Private investigators</div></div>
           <div><div className="eyebrow">Reach</div><div className="trust-value">Reports from any country</div></div>
         </div>
-        <div className="logos">
+        {/* <div className="logos">
           <span className="mono" style={{ fontSize: 11.5 }}>As seen in</span>
           <span className="logo-slot">[Press logo]</span>
           <span className="logo-slot">[Press logo]</span>
           <span className="logo-slot">[Partner logo]</span>
-        </div>
+        </div> */}
       </section>
 
       <section id="check" className="wrap" style={{ paddingBottom: 88 }}>
@@ -153,12 +153,12 @@ export default function HomePage() {
               <h3>In-house research team</h3>
               <p>Reads every report, checks it is complete, and contacts you only if we have a question.</p>
             </div>
-            <div className="card" style={{ padding: 32 }}>
+            {/* <div className="card" style={{ padding: 32 }}>
               <div style={{ width: 148, height: 40, border: "1.5px dashed #9aa3c0", borderRadius: 6, display: "grid", placeItems: "center", fontSize: 12, color: "var(--ink-muted)" }}>[Firm logo]</div>
               <h3>[Investigation firm]</h3>
               <p>Private investigators who analyse how each scam operates and confirm patterns before anything is published.</p>
               <div className="card-tag" style={{ marginTop: 16 }}>[Credentials] · [Country]</div>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
