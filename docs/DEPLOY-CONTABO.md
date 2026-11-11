@@ -85,9 +85,10 @@ cd ~/kurotrace
 bash deploy/init-env.sh
 ```
 
-It asks for your domain and the IP address(es) allowed into the admin (find yours at
-https://ifconfig.me, from your home or office). It creates every secret key automatically and
-writes `deploy/.env`.
+It asks for your domain, then whether to lock the admin to fixed IP addresses.
+**Press Enter** to allow admin sign-in from anywhere (the usual choice: home and mobile IPs
+change). Sign-in still needs each person's password **and** a code from their authenticator app.
+It creates every secret key automatically and writes `deploy/.env`.
 
 It also creates the **backup key** at `~/kurotrace-backup-PRIVATE.key`. Copy it to your Mac and to
 a password manager, then delete it from the server:
@@ -122,21 +123,58 @@ docker compose ps                   # everything "running" or "healthy"; "migrat
 
 Open `https://<your-domain>`. The certificate is issued automatically on the first visit.
 
-Create your admin account (shows a key for your authenticator app once):
+### Your admin account and authenticator
+
+Have your phone ready with an authenticator app (Google Authenticator, Microsoft Authenticator,
+1Password, Authy…). Then:
 
 ```bash
 docker compose run --rm admin node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/create-owner.ts --username <your-name>
 ```
 
-Then open `https://admin.<your-domain>` from the IP you allowed.
-From any other IP it's a blank "not found", by design.
+1. It asks for a password (at least 12 characters; a few random words is best).
+2. It shows a **QR code** in the terminal. In the app: **Add account → Scan QR code**.
+   If the terminal QR won't scan, choose **Enter a setup key** and type the key printed under it.
+3. Type `clear` so the key leaves the screen.
+
+That key (the "secret") is shown **only this once**. The server keeps it encrypted, and nobody,
+including you, can display it again. If you lose your phone, see "Lost phone" below.
+
+Sign in at `https://admin.<your-domain>`: username, password, and the 6-digit code from the app.
+
+### Adding your team
+
+Each person gets **their own** secret. Never share yours: the audit log records who did what,
+and one leaked phone shouldn't unlock everyone.
+
+1. In the admin: **Staff → Invite**. Enter their username and role.
+2. You get a **one-time setup link** (works once, for 48 hours). Send it privately, e.g. Signal or
+   WhatsApp, not a group chat.
+3. They open it, scan the QR code with their authenticator app, choose a password and enter the
+   current code. Done; the link stops working.
+
+### Lost phone or new phone
+
+An owner opens **Staff**, picks the person, and clicks **Reset password + authenticator**. That person gets a new setup link
+and scans a new QR code; the old secret stops working at once. (For your own owner account, ask a
+second owner. It's worth creating a second owner account for this, kept by someone you trust.)
+
+### Extra protection (optional)
+
+- A **security key or passkey** (YubiKey, phone passkey) can be added under **Account** for sign-ins
+  that can't be phished.
+- To lock the admin to fixed IPs later: set `ADMIN_IP_RANGES` and `ADMIN_ALLOWED_IPS` in
+  `deploy/.env` (examples are in the file), then `docker compose up -d`.
+- Five wrong tries lock an account for 30 minutes, and too many attempts from one address are
+  blocked for 15 minutes. A session ends if the visitor's IP changes, after 2 hours idle, or after
+  12 hours.
 
 ## 9. Cloudflare (recommended, free)
 
 Hides the server IP and absorbs attacks.
 
 1. Add the site to Cloudflare and change the domain's nameservers to the two Cloudflare gives you.
-2. Make the `@` and `www` records **Proxied** (orange cloud). You can leave `admin` grey (DNS only).
+2. Make the `@`, `www` and `admin` records **Proxied** (orange cloud).
 3. SSL/TLS → **Full (strict)**.
 4. Then lock the server so only Cloudflare can reach the public site:
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Creates deploy/.env for the live server, with every password and key generated fresh.
 #   bash deploy/init-env.sh
-# Asks for your domain and office IP address(es). Never overwrites an existing deploy/.env.
-# Non-interactive (CI): SITE_DOMAIN=… ADMIN_IPS="…" bash deploy/init-env.sh
+# Asks for your domain and, optionally, IP addresses to lock the admin to.
+# Never overwrites an existing deploy/.env.
+# Non-interactive (CI): SITE_DOMAIN=… ADMIN_IPS="any" (or "1.2.3.4 5.6.7.8") bash deploy/init-env.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 OUT=.env
@@ -10,10 +11,22 @@ OUT=.env
 
 ask() { local var=$1 prompt=$2; if [ -z "${!var:-}" ]; then read -r -p "$prompt" "$var"; fi; }
 ask SITE_DOMAIN "Your domain, without https:// (e.g. kurotrace.com): "
-ask ADMIN_IPS "IP address(es) allowed into the admin, separated by spaces (find yours at https://ifconfig.me): "
+if [ -z "${ADMIN_IPS+x}" ]; then
+  echo
+  echo "The admin always needs a password AND a code from each person's authenticator app."
+  echo "You can also lock it to fixed IP addresses (only useful if your team's IPs never change)."
+  read -r -p "Admin IP lock: press Enter to allow sign-in from anywhere, or type IPs separated by spaces: " ADMIN_IPS
+fi
 SITE_DOMAIN=$(echo "$SITE_DOMAIN" | tr 'A-Z' 'a-z' | sed 's#^https\?://##; s#/.*##; s#^www\.##')
 [[ "$SITE_DOMAIN" =~ ^[a-z0-9.-]+\.[a-z]{2,}$ ]] || { echo "That doesn't look like a domain."; exit 1; }
-[ -n "$ADMIN_IPS" ] || { echo "At least one admin IP is required."; exit 1; }
+ADMIN_IPS=$(echo "${ADMIN_IPS:-}" | xargs)
+if [ -z "$ADMIN_IPS" ] || [ "$ADMIN_IPS" = "any" ]; then
+  ADMIN_RANGES="0.0.0.0/0 ::/0"; ADMIN_ALLOWED="*"
+  echo "Admin: open to any address; password + authenticator code required."
+else
+  ADMIN_RANGES="$ADMIN_IPS"; ADMIN_ALLOWED="$(echo "$ADMIN_IPS" | tr -s ' ' ',')"
+  echo "Admin: only from $ADMIN_IPS (plus password + authenticator code)."
+fi
 
 rand() { openssl rand -base64 32; }
 hex() { openssl rand -hex 24; }
@@ -37,8 +50,11 @@ SITE_DOMAIN="$SITE_DOMAIN"
 ADMIN_DOMAIN="admin.$SITE_DOMAIN"
 NEXT_PUBLIC_SITE_URL="https://$SITE_DOMAIN"
 ADMIN_URL="https://admin.$SITE_DOMAIN"
-ADMIN_IP_RANGES="$ADMIN_IPS"
-ADMIN_ALLOWED_IPS="$(echo "$ADMIN_IPS" | tr -s ' ' ',')"
+# Admin IP lock. "0.0.0.0/0 ::/0" and "*" mean anyone (sign-in still needs password +
+# authenticator code). To lock it later: ADMIN_IP_RANGES="1.2.3.4 5.6.7.8" and
+# ADMIN_ALLOWED_IPS="1.2.3.4,5.6.7.8", then: docker compose up -d
+ADMIN_IP_RANGES="$ADMIN_RANGES"
+ADMIN_ALLOWED_IPS="$ADMIN_ALLOWED"
 SITE_INDEXABLE=""               # set to "true" on launch day so Google can index the site
 
 # Encryption keys: also copy these two lines into your password manager. Without them

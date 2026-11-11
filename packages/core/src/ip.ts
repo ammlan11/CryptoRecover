@@ -3,7 +3,7 @@
  * so it uses only web-standard APIs (no node:* imports).
  */
 
-type Rule = { kind: "v4"; base: number; mask: number } | { kind: "v6"; value: string };
+type Rule = { kind: "v4"; base: number; mask: number } | { kind: "v6"; value: string } | { kind: "any" };
 
 export function parseIpv4(ip: string): number | null {
   const parts = ip.split(".");
@@ -31,6 +31,8 @@ export function parseAllowList(spec: string | undefined): Rule[] {
   for (const raw of spec.split(",")) {
     const entry = raw.trim();
     if (!entry) continue;
+    // "*" = any address. Must be written out on purpose: an empty list still blocks everyone.
+    if (entry === "*") { rules.push({ kind: "any" }); continue; }
     const [addr, bitsRaw] = entry.split("/") as [string, string | undefined];
     const v4 = parseIpv4(normalizeIp(addr));
     if (v4 !== null) {
@@ -52,7 +54,7 @@ export function isIpAllowed(ip: string | null | undefined, rules: readonly Rule[
   const normalized = normalizeIp(ip);
   const v4 = parseIpv4(normalized);
   return rules.some((rule) =>
-    rule.kind === "v4" ? v4 !== null && ((v4 & rule.mask) >>> 0) === rule.base : rule.value === normalized,
+    rule.kind === "any" ? true : rule.kind === "v4" ? v4 !== null && ((v4 & rule.mask) >>> 0) === rule.base : rule.value === normalized,
   );
 }
 

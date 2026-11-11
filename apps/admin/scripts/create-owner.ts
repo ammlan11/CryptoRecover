@@ -3,13 +3,15 @@
  *
  *   npm run create-owner -w @kurotrace/admin -- --username alice
  *
- * Asks for a password, then prints an authenticator key and QR link to scan.
+ * Asks for a password, then shows a QR code (and the same key as text) to scan with an
+ * authenticator app. The key is stored encrypted and is never shown again.
  * Later staff are invited from the admin terminal (Staff → Invite).
  *
  * Non-interactive use (CI only): OWNER_PASSWORD=... and, with ALLOW_FIXED_TOTP=true,
  * OWNER_TOTP_SECRET=... for a known authenticator secret.
  */
 import { createInterface } from "node:readline/promises";
+import QRCode from "qrcode";
 import { stdin, stdout } from "node:process";
 import { checkPasswordPolicy, hashPassword } from "@kurotrace/core/password";
 import { generateTotpSecret, totpUri } from "@kurotrace/core/totp";
@@ -51,9 +53,12 @@ async function main() {
 
   console.log(`\nOwner "${username}" created.`);
   if (!fixed) {
-    console.log("\nAdd this to your authenticator app now. It will not be shown again:");
-    console.log(`  Key: ${secret.match(/.{1,4}/g)?.join(" ")}`);
-    console.log(`  Link: ${totpUri(secret, username, "Kuro Trace Admin")}\n`);
+    const uri = totpUri(secret, username, "Kuro Trace Admin");
+    console.log("\nScan this with your authenticator app now (Google Authenticator, Microsoft Authenticator, 1Password…).");
+    console.log("It is shown only this once and is stored encrypted. Clear the screen afterwards (type: clear).\n");
+    console.log(await QRCode.toString(uri, { type: "terminal", small: true }));
+    console.log(`  Can't scan? Choose "Enter a setup key" and type: ${secret.match(/.{1,4}/g)?.join(" ")}`);
+    console.log("  (Time-based, account name: Kuro Trace Admin)\n");
   }
   await prisma.$disconnect();
 }
