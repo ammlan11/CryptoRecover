@@ -45,4 +45,11 @@ for i in $(seq 1 30); do docker compose exec -T backup sh -c 'ls /backups/*.sql.
 docker compose exec -T backup sh -c 'ls -l /backups' | grep -q 'sql.gz.age' || fail "backup"
 docker compose exec -T web sh -c 'touch /data/evidence/.write-test && rm /data/evidence/.write-test' || fail "evidence volume not writable"
 docker compose exec -T web sh -c 'touch /app/x 2>/dev/null' && fail "app filesystem should be read-only"
+# Switch to "admin open to any address" (the default for teams without fixed IPs):
+# the sign-in page must now load from outside, and still need a session for everything else.
+sed -i 's|^ADMIN_IP_RANGES=.*|ADMIN_IP_RANGES="0.0.0.0/0 ::/0"|; s|^ADMIN_ALLOWED_IPS=.*|ADMIN_ALLOWED_IPS="*"|' .env
+docker compose up -d caddy admin
+for i in $(seq 1 60); do [ "$(site admin.kurotrace.localhost /login)" = "200" ] && break; sleep 2; done
+[ "$(site admin.kurotrace.localhost /login)" = "200" ] || fail "open admin: sign-in page should load from anywhere"
+[ "$(site admin.kurotrace.localhost /reports)" = "307" ] || fail "open admin: console must still need a session"
 echo "Rehearsal passed: site, HTTPS headers, scanner blocking, admin lock, owner creation, backups, read-only containers."

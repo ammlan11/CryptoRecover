@@ -4,6 +4,7 @@
 # Settings come from deploy/.env:
 #   SITE_DOMAIN, ADMIN_DOMAIN       your domains
 #   ADMIN_IP_RANGES                 space-separated IPs/ranges allowed to reach the admin
+#                                   ("0.0.0.0/0 ::/0" = anyone; sign-in still needs an authenticator code)
 #   EDGE_IPS                        who may connect at all: "0.0.0.0/0 ::/0" (anyone), or
 #                                   Cloudflare's ranges when the site sits behind Cloudflare,
 #                                   so attackers can't bypass Cloudflare by hitting the server IP

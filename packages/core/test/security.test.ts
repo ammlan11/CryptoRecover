@@ -109,3 +109,12 @@ describe("flood limit", () => {
     expect(limiter.check("1.2.3.4").allowed).toBe(true);
   });
 });
+
+describe("admin allow-list: open to any address", () => {
+  it('"*" lets any address through, but only when written on purpose', () => {
+    expect(isIpAllowed("198.51.100.20", parseAllowList("*"))).toBe(true);
+    expect(isIpAllowed("2001:db8::9", parseAllowList(" * "))).toBe(true);
+    expect(isIpAllowed(null, parseAllowList("*"))).toBe(false);
+    expect(isIpAllowed("198.51.100.20", parseAllowList(""))).toBe(false);
+  });
+});

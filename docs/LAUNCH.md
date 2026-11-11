@@ -24,7 +24,7 @@ Every setting named here is listed in `.env.example`, with notes.
 | Backups | A nightly MySQL dump, encrypted to your public key, kept 30 days, with an optional off-site copy | CI does a real backup → restore → compare |
 | Security scan | Every pull request runs automatic checks: headers, cookies, caching of private pages, the admin IP gate (including spoofed IPs), exposed files, and an OWASP ZAP scan | CI |
 | Mobile | Every public, account and admin page is loaded at 360, 390 and 768px wide; any page that scrolls sideways fails the build, naming the element | CI + screenshots |
-| Admin lockdown | Three locks: Caddy refuses IPs outside `ADMIN_IP_RANGES`; the app checks `ADMIN_ALLOWED_IPS` again; without a staff session every admin address goes to sign-in before any page runs. A test tries every admin page and download with no cookie and with a forged one | CI |
+| Admin lockdown | Optional IP lock (Caddy `ADMIN_IP_RANGES`, then the app's `ADMIN_ALLOWED_IPS`); password + per-person authenticator code or security key; without a staff session every admin address goes to sign-in before any page runs. A test tries every admin page and download with no cookie and with a forged one | CI |
 | Attack traffic | Scanner probes (WordPress, PHP, `.env`, `.git`, phpMyAdmin…) are dropped at Caddy without a reply; per-address flood limit (429); optional Cloudflare-only mode so nobody can bypass Cloudflare via the server IP | Caddy config validated + unit tests |
 
 Built in earlier phases and still covered by tests:
@@ -64,7 +64,7 @@ Brand-new domains get scanned within hours of going live. Cloudflare absorbs mos
 - [ ] **Required.** Add one Cloudflare **rate-limiting rule** (the free plan allows one): requests to `/login` or `/signup` above 20 per 10 seconds from one IP get blocked for 10 seconds.
 - [ ] **Required.** On the server, run `bash deploy/cloudflare-ips.sh` and put the two lines it prints (`EDGE_IPS=…`, `TRUSTED_PROXIES=…`) in `deploy/.env`. The server will then only answer Cloudflare, so attackers can't get around Cloudflare by using the server's IP.
 - [ ] **Required.** Set `SITE_DOMAIN`, `ADMIN_DOMAIN`, `NEXT_PUBLIC_SITE_URL=https://kurotrace.com` and `ADMIN_URL=https://admin.kurotrace.com`.
-- [ ] **Required.** Set **both** `ADMIN_IP_RANGES` (space-separated) and `ADMIN_ALLOWED_IPS` (comma-separated) to your office or VPN IP addresses only. Everyone else gets a blank "not found" from the admin address.
+- [ ] Admin IP lock (optional): `deploy/init-env.sh` asks. Leave it open if your team's IPs change; every staff sign-in still needs a password and that person's own authenticator code (see DEPLOY-CONTABO.md → "Adding your team"). To lock it, set **both** `ADMIN_IP_RANGES` (space-separated) and `ADMIN_ALLOWED_IPS` (comma-separated).
 - [ ] Under attack? In Cloudflare, switch on **"I'm Under Attack" mode**. Visitors get a short browser check, and floods stop at Cloudflare.
 
 ### Secrets (generate on a trusted computer)
