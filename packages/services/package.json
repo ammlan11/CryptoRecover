@@ -12,7 +12,8 @@
     "./audit": "./src/audit.ts",
     "./site": "./src/site.ts",
     "./malware": "./src/malware.ts",
-    "./keys": "./src/keys.ts"
+    "./keys": "./src/keys.ts",
+    "./threat-lists": "./src/threat-lists.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

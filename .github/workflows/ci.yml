@@ -92,6 +92,9 @@ jobs:
         run: npm run test:integration -w @kurotrace/web
       - name: Integration tests (admin — staff sign-in, roles, cases, exports)
         run: npm run test:integration -w @kurotrace/admin
+      - name: Download the real threat lists (sanctions + scam sites)
+        continue-on-error: true # depends on GitHub-hosted lists being reachable
+        run: npm run sync-lists
       - name: Demo accounts (npm run demo is repeatable and refuses live servers)
         run: |
           npm run demo > /tmp/demo1.log

@@ -70,6 +70,13 @@ services:
     working_dir: /app/apps/admin
     command: ["sh", "-c", "while true; do node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/scan-pending.ts || true; sleep 300; done"]
 
+  # Refreshes the free threat lists the wallet checker uses (sanctions, scam sites):
+  # once at start-up, then every 12 hours.
+  threat-lists:
+    <<: *app
+    working_dir: /app/apps/admin
+    command: ["sh", "-c", "while true; do node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/sync-threat-lists.ts || true; sleep 43200; done"]
+
   mysql:
     image: mysql:8.4
     restart: unless-stopped
