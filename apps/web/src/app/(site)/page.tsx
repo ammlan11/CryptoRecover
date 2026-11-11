@@ -6,6 +6,7 @@ import { Checker } from "@/components/forms/Checker";
 import { NewsletterForm } from "@/components/forms/NewsletterForm";
 import { StartReportForm } from "@/components/forms/StartReportForm";
 import { SCAMS } from "@/content/scams";
+import { FocusStartForm, ReportLink } from "@/components/ReportLink";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
@@ -54,6 +55,11 @@ export default function HomePage() {
             warnings so fewer people fall for it. Never shown with your name.
           </p>
           <StartReportForm variant="hero" />
+          <FocusStartForm />
+          <div className="hero-account">
+            <span>Want to set up your account first?</span>
+            <Link href="/signup" className="btn btn-line-w">Create a free account</Link>
+          </div>
         </div>
         <div className="hero-art">
           <HeroOrb />
@@ -136,7 +142,7 @@ export default function HomePage() {
               <strong>Seen a crypto scam? Put it on the record.</strong>
               <span style={{ fontSize: 15 }}>Free · About 5 minutes · Never published with your name</span>
             </div>
-            <Link href="#report" className="btn btn-navy">Share your report</Link>
+            <ReportLink className="btn btn-navy" />
           </div>
         </div>
       </section>
@@ -193,7 +199,7 @@ export default function HomePage() {
             <p style={{ color: "var(--ink-muted)", lineHeight: 1.6, margin: "16px 0 28px" }}>
               If two or more sound familiar, stop sending money and share what happened.
             </p>
-            <Link href="#report" className="btn btn-navy">Share your report</Link>
+            <ReportLink className="btn btn-navy" />
           </div>
           <ol>
             {SIGNS.map((s, i) => (
@@ -227,7 +233,7 @@ export default function HomePage() {
               Every report makes the next scam easier to spot.
             </h2>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 32 }}>
-              <Link href="#report" className="btn btn-cyan">Share your report</Link>
+              <ReportLink className="btn btn-cyan" />
               <Link href="#check" className="btn btn-line-w">Check a wallet</Link>
             </div>
           </div>

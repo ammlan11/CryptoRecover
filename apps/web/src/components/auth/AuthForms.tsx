@@ -13,6 +13,7 @@ import {
   type AuthState,
 } from "@/app/(auth)/actions";
 import { BotCheck } from "@/components/forms/BotCheck";
+import { PhoneField } from "./PhoneField";
 
 const idle: AuthState = { status: "idle" };
 
@@ -33,16 +34,7 @@ function Submit({ pending, children }: { pending: boolean; children: React.React
   );
 }
 
-/** Mobile number with country code, required on every account so the team can reach the reporter. */
-export function PhoneField({ label = "Mobile number", defaultValue }: { label?: string; defaultValue?: string }) {
-  return (
-    <div>
-      <label className="label" htmlFor="phone">{label}</label>
-      <input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={40} className="field" placeholder="+81 90 1234 5678" defaultValue={defaultValue} />
-      <p className="fine" style={{ margin: "6px 0 0" }}>Start with your country code. Only our research team can see it, to contact you about your report.</p>
-    </div>
-  );
-}
+export { PhoneField };
 
 const PasswordHint = () => <p className="fine" style={{ margin: "6px 0 0" }}>At least 12 characters. A short phrase you'll remember works well.</p>;
 
@@ -69,21 +61,22 @@ export function LoginForm({ next }: { next?: string }) {
   );
 }
 
-export function SignupForm() {
+export function SignupForm({ country = "" }: { country?: string }) {
   const [state, action, pending] = useActionState(signupAction, idle);
+  const typed = state.status === "error" ? state.values ?? {} : {};
   if (state.status === "success") return <Message state={state} />;
   return (
     <form action={action} className="stack">
       <div>
         <label className="label" htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" required className="field" />
+        <input id="email" name="email" type="email" autoComplete="email" required className="field" defaultValue={typed.email} />
       </div>
       <div>
         <label className="label" htmlFor="password">Choose a password</label>
         <input id="password" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} className="field" />
         <PasswordHint />
       </div>
-      <PhoneField />
+      <PhoneField defaultCountry={typed.phoneCountry || country} defaultNumber={typed.phone} key={`${typed.phoneCountry}|${typed.phone}`} />
       <label className="check">
         <input type="checkbox" name="terms" required />
         <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>
@@ -168,8 +161,9 @@ export function ResetForm({ token }: { token: string }) {
   );
 }
 
-export function ContinueForm({ token, email }: { token: string; email: string }) {
+export function ContinueForm({ token, email, country = "" }: { token: string; email: string; country?: string }) {
   const [state, action, pending] = useActionState(continueAction, idle);
+  const typed = state.status === "error" ? state.values ?? {} : {};
   return (
     <form action={action} className="stack">
       <input type="hidden" name="token" value={token} />
@@ -182,7 +176,7 @@ export function ContinueForm({ token, email }: { token: string; email: string })
         <input id="password" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} className="field" />
         <PasswordHint />
       </div>
-      <PhoneField />
+      <PhoneField defaultCountry={typed.phoneCountry || country} defaultNumber={typed.phone} key={`${typed.phoneCountry}|${typed.phone}`} />
       <label className="check">
         <input type="checkbox" name="terms" required />
         <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>

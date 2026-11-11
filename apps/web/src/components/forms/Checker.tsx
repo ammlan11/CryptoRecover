@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { checkIndicator, watchIndicator, type CheckState, type FormState } from "@/app/actions";
 import { BotCheck } from "@/components/forms/BotCheck";
+import { ReportLink } from "@/components/ReportLink";
 
 const KIND_LABEL: Record<string, string> = {
   WALLET: "wallet",
@@ -102,7 +103,7 @@ export function Checker() {
             <p className="checked-against">
               Checked against Kuro Trace reports, the US Treasury sanctions list (OFAC) and the MetaMask and PhishDestroy scam-site lists
               {state.listsUpdated ? `, updated ${ago(state.listsUpdated)}` : ""}.{" "}
-              {state.lists.length === 0 && state.count === 0 && <a href="/#report">Lost money to it? Report it.</a>}
+              {state.lists.length === 0 && state.count === 0 && <ReportLink>Lost money to it? Report it.</ReportLink>}
             </p>
           </div>
         )}

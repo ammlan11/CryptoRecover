@@ -35,7 +35,7 @@ export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { varia
 
   if (variant === "hero") {
     return (
-      <form action={action} className="hero-form" aria-label="Start your report" noValidate>
+      <form id="start" action={action} className="hero-form" aria-label="Start your report" noValidate>
         <input type="hidden" name="source" value="HERO_FORM" />
         {honeypot}
         <div className="hero-form-row">

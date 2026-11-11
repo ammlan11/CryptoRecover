@@ -90,7 +90,8 @@ try {
     await page.goto(`${WEB}/signup`);
     await page.fill("#email", email);
     await page.fill("#password", password);
-    await page.fill("#phone", "+81 90 1234 5678");
+    await page.selectOption("#phoneCountry", "JP");
+    await page.fill("#phone", "090 1234 5678");
     await page.check("input[name=terms]");
     await page.click("button[type=submit]");
     await page.getByText("Check your inbox").waitFor();

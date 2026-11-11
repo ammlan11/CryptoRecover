@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { ContinueForm } from "@/components/auth/AuthForms";
 import { inspectContinueLink } from "@/server/accounts";
+import { visitorCountry } from "@/lib/visitor-country";
 
 export const metadata: Metadata = { title: "Finish your report", referrer: "no-referrer" };
 
@@ -12,7 +13,7 @@ export default async function ContinuePage({ searchParams }: { searchParams: Pro
   if (!info) {
     return (
       <AuthCard title="This link has expired" lead="Report links work for 7 days. You can start a new report any time.">
-        <Link href="/#report" className="btn btn-navy" style={{ width: "100%" }}>Start a report</Link>
+        <Link href="/#start" className="btn btn-navy" style={{ width: "100%" }}>Start a report</Link>
       </AuthCard>
     );
   }
@@ -25,7 +26,7 @@ export default async function ContinuePage({ searchParams }: { searchParams: Pro
   }
   return (
     <AuthCard title="Finish your report" lead="Choose a password so your report stays private and our team can contact you securely.">
-      <ContinueForm token={token} email={info.email} />
+      <ContinueForm token={token} email={info.email} country={await visitorCountry()} />
     </AuthCard>
   );
 }

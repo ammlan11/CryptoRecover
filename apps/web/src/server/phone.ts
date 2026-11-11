@@ -1,5 +1,5 @@
 import "server-only";
-import { parsePhoneNumberFromString } from "libphonenumber-js/max";
+import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js/max";
 import { prisma } from "@kurotrace/db";
 import { userEvent } from "@kurotrace/services/audit";
 import { decryptText, encryptText, indexFor } from "@kurotrace/services/crypto";
@@ -16,15 +16,28 @@ export class PhoneError extends Error {}
 
 export const phoneHashFor = (e164: string) => indexFor(e164, "user.phone");
 
-/** Accepts "+81 90 1234 5678", "0081 90 1234 5678" etc. Returns E.164, or an error people can act on. */
-export function normalizePhone(raw: string): string {
+/** Number types nobody can be reached on personally. Mobiles, landlines and VoIP are fine. */
+const UNREACHABLE = new Set(["PREMIUM_RATE", "TOLL_FREE", "SHARED_COST", "PAGER", "VOICEMAIL", "UAN"]);
+
+/**
+ * The country picked in the form plus the number as typed ("077 123 4567"), or a full
+ * international number ("+94 77 123 4567", "0094 …") which wins over the picked country.
+ * Returns E.164, or an error people can act on.
+ */
+export function normalizePhone(raw: string, country?: string | null): string {
   const input = raw.trim().replace(/^00/, "+");
   if (!input) throw new PhoneError("Enter your mobile number.");
-  if (!input.startsWith("+")) throw new PhoneError("Start your mobile number with the country code, for example +81 for Japan.");
-  const phone = parsePhoneNumberFromString(input);
-  if (!phone || !phone.isValid()) throw new PhoneError("That doesn't look like a valid mobile number. Check the country code and digits.");
+  const region = (country ?? "").trim().toUpperCase();
+  let phone;
+  if (input.startsWith("+")) {
+    phone = parsePhoneNumberFromString(input);
+  } else {
+    if (!/^[A-Z]{2}$/.test(region)) throw new PhoneError("Choose your country, then enter your mobile number.");
+    phone = parsePhoneNumberFromString(input, region as CountryCode);
+  }
+  if (!phone || !phone.isValid()) throw new PhoneError("That doesn't look like a valid number for this country. Check the country and the digits.");
   const type = phone.getType();
-  if (type && type !== "MOBILE" && type !== "FIXED_LINE_OR_MOBILE") throw new PhoneError("Please give a mobile number.");
+  if (type && UNREACHABLE.has(type)) throw new PhoneError("Please give a number we can call or message you on, not a toll-free or premium number.");
   return phone.number;
 }
 
@@ -45,8 +58,8 @@ export function userPhone(user: { id: string; phoneEnc: string | null }) {
 }
 
 /** Adds or changes the number. A change emails the account owner. */
-export async function savePhone(userId: string, raw: string) {
-  const e164 = normalizePhone(raw);
+export async function savePhone(userId: string, raw: string, country?: string | null) {
+  const e164 = normalizePhone(raw, country);
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { phoneEnc: true, emailEnc: true } });
   await prisma.user.update({ where: { id: userId }, data: protectPhone(userId, e164) });
   await userEvent(userId, user.phoneEnc ? "user.phone_changed" : "user.phone_added");

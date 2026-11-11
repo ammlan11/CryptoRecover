@@ -12,13 +12,14 @@ export type PhoneState = { status: "idle" } | { status: "error"; message: string
 
 const limiter = new RateLimiter(10, 60 * 60_000);
 const raw = (form: FormData) => String(form.get("phone") ?? "").slice(0, 40);
+const country = (form: FormData) => String(form.get("phoneCountry") ?? "").slice(0, 2);
 
 /** First number, for accounts that don't have one yet. */
 export async function addPhoneAction(_prev: PhoneState, form: FormData): Promise<PhoneState> {
   const session = await requireUser({ allowMissingPhone: true });
   if (session.user.phoneHash) redirect("/account/reports");
   try {
-    await savePhone(session.user.id, raw(form));
+    await savePhone(session.user.id, raw(form), country(form));
   } catch (error) {
     if (error instanceof PhoneError) return { status: "error", message: error.message };
     throw error;
@@ -35,7 +36,7 @@ export async function changePhoneAction(_prev: PhoneState, form: FormData): Prom
     return { status: "error", message: "Your password is not correct." };
   }
   try {
-    const masked = await savePhone(session.user.id, raw(form));
+    const masked = await savePhone(session.user.id, raw(form), country(form));
     revalidatePath("/account/settings");
     return { status: "success", message: `Saved. Your mobile number is now ${masked}.` };
   } catch (error) {
