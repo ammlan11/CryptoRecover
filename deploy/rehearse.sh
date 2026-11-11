@@ -29,7 +29,8 @@ for i in $(seq 1 90); do [ "$(site kurotrace.localhost /robots.txt)" = "200" ] &
 
 fail() { trap - ERR; note "Rehearsal failed" "$*"; diagnose; exit 1; }
 [ "$(site kurotrace.localhost /)" = "200" ] || fail "home page"
-[ "$(site www.kurotrace.localhost /)" = "308" ] || fail "www redirect"
+www=$(curl -sk --resolve www.kurotrace.localhost:443:127.0.0.1 -o /dev/null -w "%{http_code} %{redirect_url}" https://www.kurotrace.localhost/a?b=1)
+[ "$www" = "301 https://kurotrace.localhost/a?b=1" ] || fail "www redirect: got $www"
 hdrs=$(curl -skI --resolve kurotrace.localhost:443:127.0.0.1 https://kurotrace.localhost/)
 echo "$hdrs" | grep -qi "strict-transport-security" || fail "HSTS header"
 echo "$hdrs" | grep -qi "^server:" && fail "Server header should be hidden"
