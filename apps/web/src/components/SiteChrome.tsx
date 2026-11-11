@@ -46,7 +46,7 @@ export function SiteFooter() {
           <p className="muted" style={{ fontSize: 14, lineHeight: 1.6, margin: "12px 0 0" }}>
             Crypto scam research.
             <br />
-            Flaxhome, 8 Broadway, Duffield, Derbyshire, England, DE56 4BT
+            Flaxhome, 8 Broadway, Duffield, Derbyshire, England, DE56 4BT.
           </p>
         </div>
         <nav className="footer-col" aria-label="Popular topics">
