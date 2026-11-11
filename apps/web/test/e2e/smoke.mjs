@@ -49,14 +49,16 @@ try {
   await page.goto(`${BASE}/signup`);
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
-  await page.fill("#phone", "077 123 4567");
+  await page.fill("#phone", "12");
+  await page.selectOption("#phoneCountry", "LK");
   await page.check("input[name=terms]");
   await page.click("button[type=submit]");
-  await page.getByText("Start your mobile number with the country code").waitFor();
-  // React clears the form after a failed submit: fill it again with a valid number.
-  await page.fill("#email", EMAIL);
+  await page.getByText("doesn't look like a valid number").waitFor();
+  // After a failed submit the email, country and number stay filled in; only the password is cleared.
+  if ((await page.inputValue("#email")) !== EMAIL) throw new Error("email was cleared after a failed sign-up");
+  if ((await page.inputValue("#phoneCountry")) !== "LK") throw new Error("country was cleared after a failed sign-up");
   await page.fill("#password", PASSWORD);
-  await page.fill("#phone", "+94 77 123 4567");
+  await page.fill("#phone", "077 123 4567");
   await page.check("input[name=terms]");
   await page.click("button[type=submit]");
   await page.getByText("Check your inbox").waitFor();

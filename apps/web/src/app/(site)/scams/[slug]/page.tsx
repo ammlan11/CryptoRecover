@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/JsonLd";
 import { SCAMS, getScam } from "@/content/scams";
 import { siteUrl } from "@/lib/site";
+import { ReportLink } from "@/components/ReportLink";
 
 export function generateStaticParams() {
   return SCAMS.map((s) => ({ slug: s.slug }));
@@ -92,7 +93,7 @@ export default async function ScamPage({ params }: { params: Promise<{ slug: str
               <strong>Seen this scam? Put it on the record.</strong>
               <span style={{ fontSize: 15 }}>Free · About 5 minutes · We don&rsquo;t recover money and never charge</span>
             </div>
-            <Link href="/#report" className="btn btn-navy">Share your report</Link>
+            <ReportLink className="btn btn-navy" />
           </div>
 
           <h2>Questions</h2>

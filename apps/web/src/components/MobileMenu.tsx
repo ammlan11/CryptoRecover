@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
+import { ReportLink } from "@/components/ReportLink";
 
 const LINKS = [
   { href: "/scams", label: "Crypto scams" },
@@ -39,8 +40,9 @@ export function MobileMenu() {
           ))}
         </nav>
         <div className="menu-actions">
+          <ReportLink onNavigate={close} className="btn btn-cyan" />
+          <Link href="/signup" onClick={close} className="btn btn-line">Create a free account</Link>
           <Link href="/login" onClick={close} className="btn btn-line">Log in</Link>
-          <Link href="/#report" onClick={close} className="btn btn-cyan">Share your report</Link>
         </div>
       </div>
     </>

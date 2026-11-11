@@ -4,6 +4,7 @@ import { prisma } from "@kurotrace/db";
 import { requireUser } from "@/lib/session";
 import { maskPhone, userPhone } from "@/server/phone";
 import { ChangePhoneForm } from "./ChangePhoneForm";
+import { visitorCountry } from "@/lib/visitor-country";
 
 export const metadata: Metadata = { title: "Change mobile number" };
 
@@ -16,7 +17,7 @@ export default async function ChangePhonePage() {
       <h1 className="page-title">Change mobile number</h1>
       <section className="panel" style={{ maxWidth: 520 }}>
         <p style={{ marginTop: 0 }}>Your number on file is <strong>{phone ? maskPhone(phone) : "none"}</strong>. We&rsquo;ll email you when it changes.</p>
-        <ChangePhoneForm />
+        <ChangePhoneForm country={await visitorCountry()} />
         <p className="fine" style={{ marginBottom: 0 }}><Link href="/account/settings">← Back to settings</Link></p>
       </section>
     </>

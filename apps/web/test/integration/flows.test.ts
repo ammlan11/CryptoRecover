@@ -244,9 +244,17 @@ describe("mobile number and emailed sign-in codes", () => {
   it("accepts real mobile numbers in international format only, and stores them encrypted", async () => {
     expect(phone.normalizePhone("+94 77 123 4567")).toBe("+94771234567");
     expect(phone.normalizePhone("0094 77 123 4567")).toBe("+94771234567");
-    expect(() => phone.normalizePhone("077 123 4567")).toThrow(/country code/);
+    expect(() => phone.normalizePhone("077 123 4567")).toThrow(/Choose your country/);
+    // With the country picked, people can type the number the way they usually write it.
+    expect(phone.normalizePhone("077 123 4567", "LK")).toBe("+94771234567");
+    expect(phone.normalizePhone("77 123 4567", "lk")).toBe("+94771234567");
+    expect(phone.normalizePhone("090-1234-5678", "JP")).toBe("+819012345678");
+    // A full international number wins over the picked country.
+    expect(phone.normalizePhone("+94 77 123 4567", "JP")).toBe("+94771234567");
     expect(() => phone.normalizePhone("+94 12")).toThrow(/valid/);
-    expect(() => phone.normalizePhone("+94 11 234 5678")).toThrow(/mobile/); // Colombo landline
+    expect(() => phone.normalizePhone("12", "LK")).toThrow(/valid/);
+    expect(phone.normalizePhone("011 234 5678", "LK")).toBe("+94112345678"); // landlines are reachable too
+    expect(() => phone.normalizePhone("0800 123 456", "GB")).toThrow(/toll-free or premium/);
     expect(phone.maskPhone("+94771234567")).toBe("+94 ••• ••• 567");
 
     const user = await verifiedUser("sam@example.com");

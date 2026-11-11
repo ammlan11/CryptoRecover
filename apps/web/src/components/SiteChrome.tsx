@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SCAMS } from "@/content/scams";
 import { Logo } from "./Logo";
 import { MobileMenu } from "./MobileMenu";
+import { ReportLink } from "@/components/ReportLink";
 
 export function NoticeBar() {
   return (
@@ -29,9 +30,8 @@ export function SiteHeader() {
       </div>
       <div className="pill pill-side">
         <Link href="/login" style={{ fontSize: 15, fontWeight: 500, color: "var(--navy-900)" }}>Log in</Link>
-        <Link href="/#report" className="btn btn-line">
-          Share your report
-        </Link>
+        <Link href="/signup" className="header-signup" style={{ fontSize: 15, fontWeight: 500, color: "var(--navy-900)" }}>Create account</Link>
+        <ReportLink className="btn btn-line" />
       </div>
     </header>
   );
@@ -59,7 +59,7 @@ export function SiteFooter() {
         </nav>
         <nav className="footer-col" aria-label="Tools">
           <span className="mono" style={{ fontSize: 12 }}>Tools</span>
-          <Link href="/#report">Report a crypto scam</Link>
+          <ReportLink>Report a crypto scam</ReportLink>
           <Link href="/#check">Crypto wallet checker</Link>
           <Link href="/#alerts">Weekly scam alert</Link>
         </nav>
@@ -80,9 +80,7 @@ export function StickyCta() {
     <div className="sticky-cta">
       <div className="wrap">
         <span style={{ fontSize: 14, color: "#d8def3" }}>Seen a crypto scam? It takes 5 minutes to put it on the record.</span>
-        <Link href="/#report" className="btn btn-cyan">
-          Share your report
-        </Link>
+        <ReportLink className="btn btn-cyan" />
       </div>
     </div>
   );

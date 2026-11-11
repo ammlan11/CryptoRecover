@@ -21,7 +21,14 @@ import { normalizePhone, PhoneError } from "@/server/phone";
 import { ipHashFor } from "@kurotrace/services/crypto";
 import { prisma } from "@kurotrace/db";
 
-export type AuthState = { status: "idle" } | { status: "error"; message: string } | { status: "success"; message: string };
+/** `values`: what the person typed (never passwords), so a failed submit doesn't empty the form. */
+export type AuthState =
+  | { status: "idle" }
+  | { status: "error"; message: string; values?: Record<string, string> }
+  | { status: "success"; message: string };
+
+const kept = (form: FormData, ...names: string[]) =>
+  Object.fromEntries(names.map((n) => [n, String(form.get(n) ?? "").slice(0, 254)]));
 
 const loginLimiter = new RateLimiter(10, 10 * 60_000);
 const signupLimiter = new RateLimiter(5, 60 * 60_000);
@@ -40,7 +47,12 @@ async function limited(limiter: RateLimiter, key: string) {
   return !limiter.check(`${key}:${await clientIp()}`).allowed;
 }
 
-export async function signupAction(_prev: AuthState, form: FormData): Promise<AuthState> {
+export async function signupAction(prev: AuthState, form: FormData): Promise<AuthState> {
+  const state = await signup(prev, form);
+  return state.status === "error" ? { ...state, values: kept(form, "email", "phone", "phoneCountry") } : state;
+}
+
+async function signup(_prev: AuthState, form: FormData): Promise<AuthState> {
   if (await limited(signupLimiter, "signup")) return SLOW_DOWN;
   if (!(await passesBotCheck(form, "signup"))) return { status: "error", message: BOT_CHECK_FAILED };
   const parsed = z.object({ email, password }).safeParse({ email: form.get("email"), password: form.get("password") });
@@ -48,7 +60,7 @@ export async function signupAction(_prev: AuthState, form: FormData): Promise<Au
   if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the privacy notice to continue." };
   let phone: string;
   try {
-    phone = normalizePhone(String(form.get("phone") ?? "").slice(0, 40));
+    phone = normalizePhone(String(form.get("phone") ?? "").slice(0, 40), String(form.get("phoneCountry") ?? "").slice(0, 2));
   } catch (error) {
     return { status: "error", message: error instanceof PhoneError ? error.message : "Enter a valid mobile number." };
   }
@@ -138,12 +150,17 @@ export async function resetAction(_prev: AuthState, form: FormData): Promise<Aut
 }
 
 /** Continue-report link: creates the account, signs in and opens the report form. */
-export async function continueAction(_prev: AuthState, form: FormData): Promise<AuthState> {
+export async function continueAction(prev: AuthState, form: FormData): Promise<AuthState> {
+  const state = await continueAccount(prev, form);
+  return state.status === "error" ? { ...state, values: kept(form, "phone", "phoneCountry") } : state;
+}
+
+async function continueAccount(_prev: AuthState, form: FormData): Promise<AuthState> {
   if (await limited(signupLimiter, "continue")) return SLOW_DOWN;
   if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the privacy notice to continue." };
   let phone: string;
   try {
-    phone = normalizePhone(String(form.get("phone") ?? "").slice(0, 40));
+    phone = normalizePhone(String(form.get("phone") ?? "").slice(0, 40), String(form.get("phoneCountry") ?? "").slice(0, 2));
   } catch (error) {
     return { status: "error", message: error instanceof PhoneError ? error.message : "Enter a valid mobile number." };
   }
