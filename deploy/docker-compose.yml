@@ -69,6 +69,8 @@ services:
   # Catches up on any uploads the scanner missed (it was busy or restarting).
   scan-pending:
     <<: *app
+    # Background job, not a web server: the image's web health check doesn't apply.
+    healthcheck: { disable: true }
     working_dir: /app/apps/admin
     command: ["sh", "-c", "while true; do node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/scan-pending.ts || true; sleep 300; done"]
 
@@ -76,6 +78,8 @@ services:
   # once at start-up, then every 12 hours.
   threat-lists:
     <<: *app
+    # Background job, not a web server: the image's web health check doesn't apply.
+    healthcheck: { disable: true }
     working_dir: /app/apps/admin
     command: ["sh", "-c", "while true; do node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/sync-threat-lists.ts || true; sleep 43200; done"]
 

@@ -52,4 +52,6 @@ docker compose up -d caddy admin
 for i in $(seq 1 60); do [ "$(site admin.kurotrace.localhost /login)" = "200" ] && break; sleep 2; done
 [ "$(site admin.kurotrace.localhost /login)" = "200" ] || fail "open admin: sign-in page should load from anywhere"
 [ "$(site admin.kurotrace.localhost /reports)" = "307" ] || fail "open admin: console must still need a session"
+bad=$(docker compose ps --format '{{.Service}} {{.Status}}' | grep -i unhealthy || true)
+[ -z "$bad" ] || fail "unhealthy services: $bad"
 echo "Rehearsal passed: site, HTTPS headers, scanner blocking, admin lock, owner creation, backups, read-only containers."
