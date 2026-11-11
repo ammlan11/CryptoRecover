@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 # Logs can't always be downloaded from CI, so failures are reported as annotations.
 note() { echo "::error title=$1::$(echo "$2" | tr '\n' ' ' | tr -s ' ' | cut -c1-1500)"; }
 diagnose() {
-  note "compose ps" "$(docker compose ps -a --format '{{.Service}} {{.State}} {{.Status}}' 2>&1)"
+  note "compose ps" "$(docker compose ps -a --format '{{.Service}} {{.State}} {{.Status}}' 2>&1 | grep -v 'No such container')"
   for svc in migrate web admin caddy backup mysql; do
     note "logs $svc" "$(docker compose logs --no-color --tail 15 $svc 2>&1 | grep -iv 'warn.*deprecat' | tail -15)"
   done
@@ -38,8 +38,9 @@ code=$(site kurotrace.localhost /wp-login.php || true); [ "$code" = "000" ] || f
 [ "$(site admin.kurotrace.localhost /login)" = "404" ] || fail "admin must 404 outside ADMIN_IP_RANGES"
 # Inside the server network, from an allowed address, the admin answers.
 docker compose exec -T admin node -e "fetch('http://127.0.0.1:3001/login',{headers:{'x-kt-client-ip':'203.0.113.10'}}).then(r=>{console.log('admin',r.status);process.exit(r.status===200?0:1)})" || fail "admin app"
-docker compose run --rm -T -e OWNER_PASSWORD="rehearsal owner passphrase" admin \
-  node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/create-owner.ts --username owner | grep -q 'Owner "owner" created' || fail "create-owner"
+owner=$(docker compose run --rm -T -e OWNER_PASSWORD="rehearsal owner passphrase" admin \
+  node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/create-owner.ts --username owner 2>&1 || true)
+echo "$owner" | grep -q 'Owner "owner" created' || fail "create-owner: $(echo "$owner" | tail -25)"
 for i in $(seq 1 30); do docker compose exec -T backup sh -c 'ls /backups/*.sql.gz.age' > /dev/null 2>&1 && break; sleep 2; done
 docker compose exec -T backup sh -c 'ls -l /backups' | grep -q 'sql.gz.age' || fail "backup"
 docker compose exec -T web sh -c 'touch /data/evidence/.write-test && rm /data/evidence/.write-test' || fail "evidence volume not writable"
