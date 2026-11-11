@@ -43,6 +43,8 @@ RUN npm run db:generate \
 FROM base AS run
 ENV NODE_ENV=production
 COPY --from=build --chown=node:node /app /app
+# Evidence volume mount point, owned by the app user so a fresh volume is writable.
+RUN mkdir -p /data/evidence && chown node:node /data/evidence
 USER node
 EXPOSE 3000 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/robots.txt').then(()=>process.exit(0),()=>process.exit(1))"

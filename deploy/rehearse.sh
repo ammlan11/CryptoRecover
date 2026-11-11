@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Full dress rehearsal of the live setup on a throwaway machine (used by CI):
+# builds every image, starts the whole stack with Caddy on *.localhost (local HTTPS),
+# and checks the site, the admin lock, scanner blocking, owner creation and backups.
+set -euo pipefail
+cd "$(dirname "$0")"
+export SITE_DOMAIN=kurotrace.localhost
+export ADMIN_IPS="203.0.113.10"          # an address the test machine is NOT, so the admin must 404
+HOME_DIR=$(mktemp -d)
+HOME="$HOME_DIR" bash init-env.sh > /dev/null
+sed -i 's/^SMTP_PASS=""/SMTP_PASS="unused-in-rehearsal"/' .env
+# No real emails from CI: write them to a file inside the container instead.
+sed -i 's/^EMAIL_PROVIDER=.*/EMAIL_PROVIDER="file"/' .env
+printf 'ALLOW_TEST_EMAIL="true"\nEMAIL_OUTBOX_FILE="/tmp/outbox.log"\n' >> .env
+
+docker compose up -d --build --wait --wait-timeout 600 mysql
+docker compose up -d --build
+site() { curl -sk --resolve "$1:443:127.0.0.1" -o /dev/null -w "%{http_code}" "https://$1$2"; }
+for i in $(seq 1 90); do [ "$(site kurotrace.localhost /robots.txt)" = "200" ] && break; sleep 2; done
+
+fail() { echo "REHEARSAL FAILED: $*"; docker compose ps; docker compose logs --tail 40 web admin caddy migrate; exit 1; }
+[ "$(site kurotrace.localhost /)" = "200" ] || fail "home page"
+[ "$(site www.kurotrace.localhost /)" = "308" ] || fail "www redirect"
+hdrs=$(curl -skI --resolve kurotrace.localhost:443:127.0.0.1 https://kurotrace.localhost/)
+echo "$hdrs" | grep -qi "strict-transport-security" || fail "HSTS header"
+echo "$hdrs" | grep -qi "^server:" && fail "Server header should be hidden"
+code=$(site kurotrace.localhost /wp-login.php || true); [ "$code" = "000" ] || fail "scanner path answered $code"
+[ "$(site admin.kurotrace.localhost /login)" = "404" ] || fail "admin must 404 outside ADMIN_IP_RANGES"
+# Inside the server network, from an allowed address, the admin answers.
+docker compose exec -T admin node -e "fetch('http://127.0.0.1:3001/login',{headers:{'x-kt-client-ip':'203.0.113.10'}}).then(r=>{console.log('admin',r.status);process.exit(r.status===200?0:1)})" || fail "admin app"
+docker compose run --rm -T -e OWNER_PASSWORD="rehearsal owner passphrase" admin \
+  node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/create-owner.ts --username owner | grep -q 'Owner "owner" created' || fail "create-owner"
+for i in $(seq 1 30); do docker compose exec -T backup sh -c 'ls /backups/*.sql.gz.age' > /dev/null 2>&1 && break; sleep 2; done
+docker compose exec -T backup sh -c 'ls -l /backups' | grep -q 'sql.gz.age' || fail "backup"
+docker compose exec -T web sh -c 'touch /data/evidence/.write-test && rm /data/evidence/.write-test' || fail "evidence volume not writable"
+docker compose exec -T web sh -c 'touch /app/x 2>/dev/null' && fail "app filesystem should be read-only"
+echo "Rehearsal passed: site, HTTPS headers, scanner blocking, admin lock, owner creation, backups, read-only containers."

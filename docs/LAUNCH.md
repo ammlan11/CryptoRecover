@@ -41,7 +41,9 @@ Built in earlier phases and still covered by tests:
 
 Tick each item off as you set it. Items marked **required** must be done before real users arrive.
 
-### Hosting (Hostinger VPS)
+### Hosting (any Ubuntu VPS: Contabo, Hostinger, …)
+> Step-by-step server setup for Contabo: **[DEPLOY-CONTABO.md](DEPLOY-CONTABO.md)** (works the same on any Ubuntu 24.04 VPS).
+
 This project needs Docker (MySQL 8, the virus scanner and the two apps run as containers), so it runs on a **Hostinger VPS**, not on shared or website-builder hosting. Hostinger's VPS supports Docker and Docker Compose.
 - [ ] **Required.** Choose a VPS with at least 2 vCPU and 8 GB RAM; the virus scanner alone uses about 1.5 GB. Pick **Ubuntu 24.04**, and the data centre nearest most of your visitors.
 - [ ] **Required.** Turn on **two-factor login** for your Hostinger account. Whoever controls that account controls your domain, email and server.
