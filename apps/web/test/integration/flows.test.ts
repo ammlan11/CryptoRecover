@@ -63,7 +63,7 @@ describe("accounts", () => {
   it("registers, verifies once, and never creates a duplicate account", async () => {
     expect(await accounts.registerUser("Ana@Example.com", PASSWORD, PHONE)).toEqual({ ok: true });
     const verify = outbox.at(-1)!;
-    expect(verify.subject).toBe("Confirm your email");
+    expect(verify.subject).toBe("Welcome to Kuro Trace: confirm your email");
     expect(await accounts.verifyEmail(linkToken(verify.text))).toBe(true);
     expect(await accounts.verifyEmail(linkToken(verify.text))).toBe(false); // single use
 

@@ -1,6 +1,7 @@
 import "server-only";
 import { appendFileSync } from "node:fs";
 import { createTransport, type Transporter } from "nodemailer";
+import { renderEmail, type EmailContent } from "./email-layout";
 import { siteUrl } from "./site";
 
 /**
@@ -18,6 +19,8 @@ export interface Email {
   to: string;
   subject: string;
   text: string;
+  /** Branded version shown by mail apps that support HTML. */
+  html?: string;
 }
 
 export const outbox: Email[] = [];
@@ -64,7 +67,7 @@ export async function sendEmail(email: Email): Promise<void> {
     return;
   }
   if (provider === "smtp") {
-    await smtp().sendMail({ from: process.env.EMAIL_FROM, to: email.to, subject: email.subject, text: email.text });
+    await smtp().sendMail({ from: process.env.EMAIL_FROM, to: email.to, subject: email.subject, text: email.text, ...(email.html ? { html: email.html } : {}) });
     return;
   }
   if (provider === "postmark") {
@@ -74,7 +77,7 @@ export async function sendEmail(email: Email): Promise<void> {
     const res = await fetch("https://api.postmarkapp.com/email", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json", "X-Postmark-Server-Token": token },
-      body: JSON.stringify({ From: from, To: email.to, Subject: email.subject, TextBody: email.text, MessageStream: "outbound" }),
+      body: JSON.stringify({ From: from, To: email.to, Subject: email.subject, TextBody: email.text, ...(email.html ? { HtmlBody: email.html } : {}), MessageStream: "outbound" }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) throw new Error(`Postmark responded ${res.status}`);
@@ -84,55 +87,166 @@ export async function sendEmail(email: Email): Promise<void> {
 }
 
 const footer = `\n\n—\nKuro Trace never asks for payment, a "recovery fee" or your seed phrase. If an email asks for any of these, it is not from us.\n${siteUrl}`;
+const notYou = "If this wasn't you, reset your password now.";
+
+/** One email: the plain-text version plus the same content in the branded HTML layout. */
+function mail(subject: string, text: string, content: EmailContent): Omit<Email, "to"> {
+  return { subject, text: `${text}${footer}`, html: renderEmail(content, siteUrl) };
+}
+
+const resetButton = { label: "Reset my password", url: `${siteUrl}/forgot-password` };
+const reportButton = (ref: string) => ({ label: "Open my report", url: `${siteUrl}/account/reports/${ref}` });
 
 export const templates = {
-  verifyEmail: (link: string): Omit<Email, "to"> => ({
-    subject: "Confirm your email",
-    text: `Confirm your email address to finish setting up your Kuro Trace account:\n\n${link}\n\nThe link works for 24 hours. If you didn't sign up, ignore this email.${footer}`,
-  }),
-  alreadyRegistered: (loginLink: string, resetLink: string): Omit<Email, "to"> => ({
-    subject: "You already have a Kuro Trace account",
-    text: `Someone tried to create an account with this email, but you already have one.\n\nLog in: ${loginLink}\nForgot your password? ${resetLink}\n\nIf this wasn't you, you can ignore this email.${footer}`,
-  }),
-  resetPassword: (link: string): Omit<Email, "to"> => ({
-    subject: "Reset your password",
-    text: `Use this link to choose a new password:\n\n${link}\n\nThe link works for 1 hour and only once. If you didn't ask for this, ignore this email; your password stays the same.${footer}`,
-  }),
-  continueReport: (link: string): Omit<Email, "to"> => ({
-    subject: "Finish your scam report",
-    text: `Thank you for starting a report. Use this secure link to finish it; it takes about 5 minutes:\n\n${link}\n\nThe link works for 7 days. Your report is encrypted and never published with your name.${footer}`,
-  }),
-  passwordChanged: (): Omit<Email, "to"> => ({
-    subject: "Your password was changed",
-    text: `The password on your Kuro Trace account was just changed and other devices were signed out.\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password${footer}`,
-  }),
-  twoStepChanged: (enabled: boolean): Omit<Email, "to"> => ({
-    subject: enabled ? "Two-step sign-in is on" : "Two-step sign-in was turned off",
-    text: `${enabled ? "Two-step sign-in is now on for your Kuro Trace account." : "Two-step sign-in was turned off on your Kuro Trace account."}\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password${footer}`,
-  }),
-  phoneChanged: (masked: string, resetLink: string): Omit<Email, "to"> => ({
-    subject: "Your mobile number was changed",
-    text: `The mobile number on your Kuro Trace account was changed to ${masked}.\n\nIf this wasn't you, reset your password now: ${resetLink}${footer}`,
-  }),
-  loginCode: (code: string, minutes: number): Omit<Email, "to"> => ({
-    subject: `${code} is your Kuro Trace sign-in code`,
-    text: `Your sign-in code is:\n\n    ${code}\n\nIt works once, for ${minutes} minutes. Never share it: Kuro Trace will never ask you for this code by phone, chat or email.\n\nIf you didn't just try to log in, someone has your password. Reset it now: ${siteUrl}/forgot-password${footer}`,
-  }),
+  /** Sent when someone joins: welcome + confirm the address. */
+  verifyEmail: (link: string) =>
+    mail(
+      "Welcome to Kuro Trace: confirm your email",
+      `Welcome to Kuro Trace, and thank you for joining.\n\nWe collect reports of crypto scams so our researchers can work out how they operate, and we publish warnings so fewer people fall for them. Your reports are encrypted and never shown with your name.\n\nConfirm your email address to finish setting up your account:\n\n${link}\n\nThe link works for 24 hours. If you didn't sign up, ignore this email.`,
+      {
+        preheader: "Confirm your email to finish setting up your account.",
+        heading: "Welcome to Kuro Trace",
+        intro: [
+          "Thank you for joining. We collect reports of crypto scams so our researchers can work out how they operate, and we publish warnings so fewer people fall for them.",
+          "Your reports are encrypted and never shown with your name. Confirm your email address to finish setting up your account.",
+        ],
+        button: { label: "Confirm my email", url: link },
+        after: ["The link works for 24 hours. If you didn't sign up, you can ignore this email."],
+      },
+    ),
+  alreadyRegistered: (loginLink: string, resetLink: string) =>
+    mail(
+      "You already have a Kuro Trace account",
+      `Someone tried to create an account with this email, but you already have one.\n\nLog in: ${loginLink}\nForgot your password? ${resetLink}\n\nIf this wasn't you, you can ignore this email.`,
+      {
+        preheader: "Log in instead, or reset your password.",
+        heading: "You already have an account",
+        intro: ["Someone tried to create an account with this email address, but you already have one."],
+        button: { label: "Log in", url: loginLink },
+        after: [`Forgot your password? Reset it here: ${resetLink}`, "If this wasn't you, you can ignore this email."],
+      },
+    ),
+  resetPassword: (link: string) =>
+    mail(
+      "Reset your password",
+      `Use this link to choose a new password:\n\n${link}\n\nThe link works for 1 hour and only once. If you didn't ask for this, ignore this email; your password stays the same.`,
+      {
+        preheader: "Choose a new password. The link works for 1 hour.",
+        heading: "Reset your password",
+        intro: ["We received a request to reset the password for your Kuro Trace account. Click the button to choose a new one."],
+        button: { label: "Choose a new password", url: link },
+        after: [
+          "The link works for 1 hour and only once.",
+          "If you didn't ask for this, ignore this email. Your password stays the same and nobody can change it without this link.",
+        ],
+      },
+    ),
+  continueReport: (link: string) =>
+    mail(
+      "Finish your scam report",
+      `Thank you for starting a report. Use this secure link to finish it; it takes about 5 minutes:\n\n${link}\n\nThe link works for 7 days. Your report is encrypted and never published with your name.`,
+      {
+        preheader: "Pick up where you left off. About 5 minutes.",
+        heading: "Finish your scam report",
+        intro: ["Thank you for starting a report. Use this secure link to finish it; it takes about 5 minutes."],
+        button: { label: "Continue my report", url: link },
+        after: ["The link works for 7 days. Your report is encrypted and never published with your name."],
+      },
+    ),
+  passwordChanged: () =>
+    mail(
+      "Your password was changed",
+      `The password on your Kuro Trace account was just changed and other devices were signed out.\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password`,
+      {
+        preheader: "Your password was just changed.",
+        heading: "Your password was changed",
+        intro: ["The password on your Kuro Trace account was just changed, and other devices were signed out."],
+        alert: notYou,
+        button: resetButton,
+      },
+    ),
+  twoStepChanged: (enabled: boolean) =>
+    mail(
+      enabled ? "Two-step sign-in is on" : "Two-step sign-in was turned off",
+      `${enabled ? "Two-step sign-in is now on for your Kuro Trace account." : "Two-step sign-in was turned off on your Kuro Trace account."}\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password`,
+      {
+        preheader: enabled ? "Your authenticator app is now required to sign in." : "Your authenticator app is no longer required to sign in.",
+        heading: enabled ? "Two-step sign-in is on" : "Two-step sign-in was turned off",
+        intro: [enabled ? "Two-step sign-in is now on for your Kuro Trace account." : "Two-step sign-in was turned off on your Kuro Trace account."],
+        alert: notYou,
+        button: resetButton,
+      },
+    ),
+  phoneChanged: (masked: string, resetLink: string) =>
+    mail(
+      "Your mobile number was changed",
+      `The mobile number on your Kuro Trace account was changed to ${masked}.\n\nIf this wasn't you, reset your password now: ${resetLink}`,
+      {
+        preheader: `Your mobile number is now ${masked}.`,
+        heading: "Your mobile number was changed",
+        intro: [`The mobile number on your Kuro Trace account was changed to ${masked}.`],
+        alert: notYou,
+        button: { label: "Reset my password", url: resetLink },
+      },
+    ),
+  loginCode: (code: string, minutes: number) =>
+    mail(
+      `${code} is your Kuro Trace sign-in code`,
+      `Your sign-in code is:\n\n    ${code}\n\nIt works once, for ${minutes} minutes. Never share it: Kuro Trace will never ask you for this code by phone, chat or email.\n\nIf you didn't just try to log in, someone has your password. Reset it now: ${siteUrl}/forgot-password`,
+      {
+        preheader: `It works once, for ${minutes} minutes.`,
+        heading: "Your sign-in code",
+        intro: ["Enter this code to finish signing in:"],
+        code,
+        after: [
+          `It works once, for ${minutes} minutes. Never share it: Kuro Trace will never ask you for this code by phone, chat or email.`,
+          `If you didn't just try to log in, someone has your password. Reset it now: ${siteUrl}/forgot-password`,
+        ],
+      },
+    ),
   /** Staff replies: the content stays inside the account, never in the email. */
-  newMessage: (ref: string): Omit<Email, "to"> => ({
-    subject: `New message about report ${ref}`,
-    text: `Our research team sent you a message about report ${ref}. Log in to read it:\n\n${siteUrl}/account/reports/${ref}${footer}`,
-  }),
-  infoNeeded: (ref: string): Omit<Email, "to"> => ({
-    subject: `We have a question about report ${ref}`,
-    text: `Our research team needs a little more detail on report ${ref}. Log in to see the question:\n\n${siteUrl}/account/reports/${ref}${footer}`,
-  }),
-  reportClosed: (ref: string): Omit<Email, "to"> => ({
-    subject: `Report ${ref} is closed`,
-    text: `Thank you for report ${ref}. Our team has finished reviewing it, and what it showed now helps warn others. You can still read it in your account:\n\n${siteUrl}/account/reports/${ref}${footer}`,
-  }),
-  reportReceived: (ref: string): Omit<Email, "to"> => ({
-    subject: `Report ${ref} received`,
-    text: `Thank you. We received report ${ref}. Our research team reads every report, and we'll message you in your account if we have a question.\n\n${siteUrl}/account/reports/${ref}${footer}`,
-  }),
+  newMessage: (ref: string) =>
+    mail(
+      `New message about report ${ref}`,
+      `Our research team sent you a message about report ${ref}. Log in to read it:\n\n${siteUrl}/account/reports/${ref}`,
+      {
+        preheader: "Log in to read it.",
+        heading: "You have a new message",
+        intro: [`Our research team sent you a message about report ${ref}. For your privacy, messages stay inside your account. Log in to read it.`],
+        button: reportButton(ref),
+      },
+    ),
+  infoNeeded: (ref: string) =>
+    mail(
+      `We have a question about report ${ref}`,
+      `Our research team needs a little more detail on report ${ref}. Log in to see the question:\n\n${siteUrl}/account/reports/${ref}`,
+      {
+        preheader: "Log in to see the question.",
+        heading: "We have a question",
+        intro: [`Our research team needs a little more detail on report ${ref}. Log in to see the question.`],
+        button: reportButton(ref),
+      },
+    ),
+  reportClosed: (ref: string) =>
+    mail(
+      `Report ${ref} is closed`,
+      `Thank you for report ${ref}. Our team has finished reviewing it, and what it showed now helps warn others. You can still read it in your account:\n\n${siteUrl}/account/reports/${ref}`,
+      {
+        preheader: "Thank you. What it showed now helps warn others.",
+        heading: `Report ${ref} is closed`,
+        intro: [`Thank you for report ${ref}. Our team has finished reviewing it, and what it showed now helps warn others.`, "You can still read it in your account."],
+        button: reportButton(ref),
+      },
+    ),
+  reportReceived: (ref: string) =>
+    mail(
+      `Report ${ref} received`,
+      `Thank you. We received report ${ref}. Our research team reads every report, and we'll message you in your account if we have a question.\n\n${siteUrl}/account/reports/${ref}`,
+      {
+        preheader: "Our research team reads every report.",
+        heading: "We received your report",
+        intro: [`Thank you. We received report ${ref}. Our research team reads every report, and we'll message you in your account if we have a question.`],
+        button: reportButton(ref),
+      },
+    ),
 };

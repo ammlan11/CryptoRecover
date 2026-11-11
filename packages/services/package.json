@@ -17,7 +17,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "email-preview": "tsx --env-file-if-exists=../../.env --conditions=react-server scripts/email-preview.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3",
