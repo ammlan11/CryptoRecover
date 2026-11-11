@@ -3,7 +3,8 @@
  *   npm run email-preview        → opens nothing, prints the folder
  */
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { templates } from "../src/email";
 
 const out = join(process.cwd(), "email-previews");
@@ -23,8 +24,11 @@ const samples = {
   "info-needed": templates.infoNeeded("DM-7KQ2P"),
   "report-closed": templates.reportClosed("DM-7KQ2P"),
 };
+// Real emails load the logo from the live site. For previews, use the file in the repo so it
+// shows even when the site isn't running on this computer.
+const brandDir = pathToFileURL(resolve(process.cwd(), "../../apps/web/public/brand")).href;
 for (const [name, mail] of Object.entries(samples)) {
-  writeFileSync(join(out, `${name}.html`), mail.html ?? "");
+  writeFileSync(join(out, `${name}.html`), (mail.html ?? "").replaceAll(`${site}/brand/`, `${brandDir}/`));
   writeFileSync(join(out, `${name}.txt`), `Subject: ${mail.subject}\n\n${mail.text}\n`);
 }
 console.log(`Wrote ${Object.keys(samples).length} emails to ${out} (open the .html files in a browser).`);
