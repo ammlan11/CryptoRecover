@@ -4,6 +4,15 @@
 # and checks the site, the admin lock, scanner blocking, owner creation and backups.
 set -euo pipefail
 cd "$(dirname "$0")"
+# Logs can't always be downloaded from CI, so failures are reported as annotations.
+note() { echo "::error title=$1::$(echo "$2" | tr '\n' ' ' | tr -s ' ' | cut -c1-1500)"; }
+diagnose() {
+  note "compose ps" "$(docker compose ps -a --format '{{.Service}} {{.State}} {{.Status}}' 2>&1)"
+  for svc in migrate web admin caddy backup mysql; do
+    note "logs $svc" "$(docker compose logs --no-color --tail 15 $svc 2>&1 | grep -iv 'warn.*deprecat' | tail -15)"
+  done
+}
+trap 'rc=$?; note "Rehearsal stopped at line $LINENO (exit $rc)" "$BASH_COMMAND"; diagnose' ERR
 export SITE_DOMAIN=kurotrace.localhost
 export ADMIN_IPS="203.0.113.10"          # an address the test machine is NOT, so the admin must 404
 HOME_DIR=$(mktemp -d)
@@ -18,7 +27,7 @@ docker compose up -d --build
 site() { curl -sk --resolve "$1:443:127.0.0.1" -o /dev/null -w "%{http_code}" "https://$1$2"; }
 for i in $(seq 1 90); do [ "$(site kurotrace.localhost /robots.txt)" = "200" ] && break; sleep 2; done
 
-fail() { echo "REHEARSAL FAILED: $*"; docker compose ps; docker compose logs --tail 40 web admin caddy migrate; exit 1; }
+fail() { trap - ERR; note "Rehearsal failed" "$*"; diagnose; exit 1; }
 [ "$(site kurotrace.localhost /)" = "200" ] || fail "home page"
 [ "$(site www.kurotrace.localhost /)" = "308" ] || fail "www redirect"
 hdrs=$(curl -skI --resolve kurotrace.localhost:443:127.0.0.1 https://kurotrace.localhost/)
