@@ -29,7 +29,8 @@ export function PhoneField({
         className="field"
         required
         autoComplete="tel-country-code"
-        value={country}
+        // Uncontrolled, so React's reset after a failed submit restores the picked country.
+        defaultValue={defaultCountry}
         onChange={(e) => setCountry(e.target.value)}
       >
         <option value="" disabled>Choose your country</option>
