@@ -16,6 +16,7 @@ import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS } from "@/lib/options";
 import { clientIp } from "@/lib/request";
 import { BOT_CHECK_FAILED, passesBotCheck } from "@/lib/bot-check";
 import { sendLeadConversion } from "@/server/conversions";
+import { checkThreatLists, listsUpdatedAt, type ListMatch } from "@kurotrace/services/threat-lists";
 import { protectEmail } from "@kurotrace/services/crypto";
 import { sendContinueReportLink } from "@/server/accounts";
 
@@ -27,7 +28,16 @@ export type FormState =
 export type CheckState =
   | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "result"; kind: IndicatorKind; value: string; count: number; since: string | null };
+  | {
+      status: "result";
+      kind: IndicatorKind;
+      value: string;
+      count: number;
+      since: string | null;
+      /** Free public lists that name it (sanctions, scam sites). */
+      lists: ListMatch[];
+      listsUpdated: string | null;
+    };
 
 const leadLimiter = new RateLimiter(5, 10 * 60_000);
 const checkLimiter = new RateLimiter(30, 60_000);
@@ -129,17 +139,23 @@ export async function checkIndicator(_prev: CheckState, form: FormData): Promise
   const indicator = typeof raw === "string" ? normalizeIndicator(raw) : null;
   if (!indicator) return { status: "error", message: "Paste a wallet address, website or @handle to check." };
   try {
-    const result = await prisma.reportIndicator.aggregate({
-      where: { kind: indicator.kind, normalizedValue: indicator.normalizedValue, confirmedAt: { not: null } },
-      _count: { _all: true },
-      _min: { createdAt: true },
-    });
+    const [result, lists, updated] = await Promise.all([
+      prisma.reportIndicator.aggregate({
+        where: { kind: indicator.kind, normalizedValue: indicator.normalizedValue, confirmedAt: { not: null } },
+        _count: { _all: true },
+        _min: { createdAt: true },
+      }),
+      checkThreatLists(indicator, raw as string),
+      listsUpdatedAt(),
+    ]);
     return {
       status: "result",
       kind: indicator.kind,
       value: indicator.normalizedValue,
       count: result._count._all,
       since: result._min.createdAt?.toISOString() ?? null,
+      lists,
+      listsUpdated: updated?.toISOString() ?? null,
     };
   } catch (error) {
     console.error("checkIndicator failed", error instanceof Error ? error.message : error);

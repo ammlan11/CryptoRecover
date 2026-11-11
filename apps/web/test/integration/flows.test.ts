@@ -309,6 +309,43 @@ describe("mobile number and emailed sign-in codes", () => {
   });
 });
 
+describe("wallet checker: free threat lists", () => {
+  const files: Record<string, string> = {
+    "sanctioned_addresses_TRX.txt": "TA3rH2A7iHnm6pKH8gr9cK1EZnShnmZdFg\n",
+    "sanctioned_addresses_ETH.txt": "0x0330070FD38Ec3bB94F58FA55D40368271E9e54A\n",
+    "config.json": JSON.stringify({ blacklist: ["opensea.support", "fake-wallet-connect.com"], whitelist: ["real-exchange.com"] }),
+    "list.json": JSON.stringify(["evil-site.com", "real-exchange.com"]),
+  };
+  const fakeFetch = (async (url: string) => {
+    const name = Object.keys(files).find((f) => String(url).endsWith(f));
+    return name ? new Response(files[name]) : new Response("not found", { status: 404 });
+  }) as unknown as typeof fetch;
+  const low = { minimum: { OFAC: 1, METAMASK: 1, PHISHDESTROY: 1 } };
+
+  it("flags sanctioned wallets and scam sites, respects allowlists, and keeps old data when a download fails", async () => {
+    const { syncThreatLists, checkThreatLists, listsUpdatedAt } = await import("@kurotrace/services/threat-lists");
+    const { normalizeIndicator } = await import("@kurotrace/core/indicators");
+    const summary = await syncThreatLists(fakeFetch, low);
+    expect(summary.OFAC).toMatchObject({ ok: true, entries: 2 });
+    expect(summary.METAMASK).toMatchObject({ ok: true, entries: 2 });
+    expect(await listsUpdatedAt()).toBeInstanceOf(Date);
+
+    const check = (q: string) => checkThreatLists(normalizeIndicator(q)!, q).then((m) => m.map((x) => x.source).sort());
+    expect(await check("TA3rH2A7iHnm6pKH8gr9cK1EZnShnmZdFg")).toEqual(["OFAC"]);
+    expect(await check("0x0330070fd38ec3bb94f58fa55d40368271e9e54a")).toEqual(["OFAC"]); // any letter case
+    expect(await check("https://login.evil-site.com/connect")).toEqual(["PHISHDESTROY"]); // subdomain of a listed site
+    expect(await check("opensea.support")).toEqual(["METAMASK"]);
+    expect(await check("real-exchange.com")).toEqual([]); // allowlisted beats a block list
+    expect(await check("TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE")).toEqual([]);
+
+    // A broken download keeps the previous list instead of wiping it.
+    const broken = (async () => new Response("server error", { status: 500 })) as unknown as typeof fetch;
+    const again = await syncThreatLists(broken, low);
+    expect(again.PHISHDESTROY).toMatchObject({ ok: false, entries: 2 });
+    expect(await check("evil-site.com")).toEqual(["PHISHDESTROY"]);
+  });
+});
+
 describe("audit log", () => {
   it("records security events in an intact hash chain", async () => {
     const rows = await prisma.auditLog.findMany({ orderBy: { id: "asc" } });

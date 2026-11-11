@@ -16,7 +16,8 @@
     "./totp": "./src/totp.ts",
     "./files": "./src/files.ts",
     "./turnstile": "./src/turnstile.ts",
-    "./malware": "./src/malware.ts"
+    "./malware": "./src/malware.ts",
+    "./threat-lists": "./src/threat-lists.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

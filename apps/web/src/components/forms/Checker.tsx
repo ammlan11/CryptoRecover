@@ -33,6 +33,48 @@ function WatchForm({ kind, value }: { kind: string; value: string }) {
   );
 }
 
+type Result = Extract<CheckState, { status: "result" }>;
+
+function ago(iso: string) {
+  const hours = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 3_600_000));
+  return hours < 48 ? `${hours} hour${hours === 1 ? "" : "s"} ago` : `${Math.round(hours / 24)} days ago`;
+}
+
+/** The headline: sanctions first, then scam-site lists, then our reports, then "nothing found". */
+function Verdict({ state }: { state: Result }) {
+  const what = KIND_LABEL[state.kind];
+  const sanctioned = state.lists.some((l) => l.source === "OFAC");
+  const scamSite = state.lists.filter((l) => l.source !== "OFAC");
+  const danger = sanctioned || scamSite.length > 0 || state.count > 0;
+  return (
+    <div className={`verdict ${danger ? "verdict-danger" : "verdict-none"}`}>
+      {sanctioned && (
+        <p className="result-head"><span className="dot-red blink" aria-hidden="true">● </span><strong>On the US Treasury sanctions list.</strong> This {what} belongs to a sanctioned criminal group. Do not send money to it.</p>
+      )}
+      {scamSite.length > 0 && (
+        <p className="result-head">
+          <span className="dot-red blink" aria-hidden="true">● </span><strong>Known scam website.</strong> Listed by{" "}
+          {scamSite.map((l, i) => <span key={l.source}>{i > 0 && " and "}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.name}</a></span>)}.
+          Don&rsquo;t connect your wallet or enter any details.
+        </p>
+      )}
+      {state.count > 0 && (
+        <p className="result-head">
+          <span className="dot-red blink" aria-hidden="true">● </span><strong>Reported {state.count} {state.count === 1 ? "time" : "times"}</strong>
+          {state.since && <span className="muted"> since {new Date(state.since).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</span>}
+          {" "}to Kuro Trace and confirmed by our team. Do not send money to this {what}.
+        </p>
+      )}
+      {!danger && (
+        <p className="result-head">
+          <strong>No reports or listings found for this {what}.</strong>{" "}
+          <span className="muted">That doesn&rsquo;t make it safe: new scam {what}s appear every day. Check the warning signs below before you send anything.</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function Checker() {
   const [state, action, pending] = useActionState(checkIndicator, { status: "idle" } as CheckState);
 
@@ -52,23 +94,16 @@ export function Checker() {
         {state.status === "error" && <p className="form-msg err">{state.message}</p>}
         {state.status === "result" && (
           <div className="result">
-            {state.count > 0 ? (
-              <p className="result-head" style={{ margin: 0 }}>
-                <span className="dot-red blink" aria-hidden="true">● </span>
-                <strong>Reported {state.count} {state.count === 1 ? "time" : "times"}</strong>
-                {state.since && <span className="muted"> since {new Date(state.since).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</span>}
-                . Do not send money to this {KIND_LABEL[state.kind]}.
-              </p>
-            ) : (
-              <p className="result-head" style={{ margin: 0 }}>
-                <strong>No confirmed reports for this {KIND_LABEL[state.kind]} yet.</strong>{" "}
-                <span className="muted">That alone doesn&rsquo;t make it safe. Check it against the warning signs below.</span>
-              </p>
-            )}
+            <Verdict state={state} />
             <p className="result-head" style={{ margin: "6px 0 0" }}>
               <code>{state.value}</code>
             </p>
             <WatchForm key={`${state.kind}:${state.value}`} kind={state.kind} value={state.value} />
+            <p className="checked-against">
+              Checked against Kuro Trace reports, the US Treasury sanctions list (OFAC) and the MetaMask and PhishDestroy scam-site lists
+              {state.listsUpdated ? `, updated ${ago(state.listsUpdated)}` : ""}.{" "}
+              {state.lists.length === 0 && state.count === 0 && <a href="/#report">Lost money to it? Report it.</a>}
+            </p>
           </div>
         )}
       </div>

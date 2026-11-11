@@ -488,3 +488,36 @@ model AuditLog {
   @@index([actorType, actorId])
   @@index([at])
 }
+
+/// Entries from free public threat lists (sanctions, scam sites), refreshed by the
+/// sync job. Kept apart from reports: they describe outside sources, not our cases.
+model ThreatListEntry {
+  id     BigInt        @id @default(autoincrement())
+  source ThreatSource
+  kind   IndicatorKind
+  value  String        @db.VarChar(255)
+  chain  String?       @db.VarChar(16)
+
+  @@unique([source, kind, value])
+  @@index([kind, value])
+}
+
+/// Domains a list says are legitimate; they override every block list.
+model ThreatListAllow {
+  value String @id @db.VarChar(255)
+}
+
+/// When each list was last refreshed, for the checker footer and the admin.
+model ThreatListSync {
+  source   ThreatSource @id
+  syncedAt DateTime
+  entries  Int
+  ok       Boolean
+  error    String?      @db.VarChar(500)
+}
+
+enum ThreatSource {
+  OFAC
+  METAMASK
+  PHISHDESTROY
+}

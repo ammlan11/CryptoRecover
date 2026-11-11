@@ -32,6 +32,7 @@ npm run dev:web                # http://localhost:3000 — emails (with their li
 npm run dev:admin              # http://localhost:3001 (127.0.0.1 is allow-listed by default)
 npm run create-owner -w @kurotrace/admin -- --username yourname   # first admin account
 npm run demo                   # or: demo admin + demo user with known passwords and sample reports (local only)
+npm run sync-lists             # download the free threat lists the wallet checker uses (the server does this every 12 hours)
 ```
 
 Checks run in CI on every pull request:

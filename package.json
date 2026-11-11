@@ -21,6 +21,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "db:generate": "npm run generate -w @kurotrace/db",
     "db:migrate": "npm run migrate -w @kurotrace/db",
-    "demo": "npm run demo -w @kurotrace/admin"
+    "demo": "npm run demo -w @kurotrace/admin",
+    "sync-lists": "npm run sync-lists -w @kurotrace/admin"
   }
 }
