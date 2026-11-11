@@ -40,8 +40,10 @@ ssh kuro@<server-ip>
 
 ```bash
 sudo apt-get install -y git
-git clone https://github.com/ammlan11/CryptoRecover.git ~/kurotrace
-cd ~/kurotrace
+# Kuro Trace lives in its own folder, owned by the kuro user.
+sudo mkdir -p /opt/kurotrace && sudo chown kuro:kuro /opt/kurotrace
+git clone https://github.com/ammlan11/CryptoRecover.git /opt/kurotrace
+cd /opt/kurotrace
 sudo bash deploy/harden-server.sh kuro
 ```
 
@@ -81,7 +83,7 @@ Check with `dig +short <your-domain>` (it can take a few minutes up to an hour).
 ## 6. Create the settings file
 
 ```bash
-cd ~/kurotrace
+cd /opt/kurotrace
 bash deploy/init-env.sh
 ```
 
@@ -116,7 +118,7 @@ or sign-in codes may land in spam.
 ## 8. Start it
 
 ```bash
-cd ~/kurotrace/deploy
+cd /opt/kurotrace/deploy
 docker compose up -d --build        # first build takes 5–10 minutes
 docker compose ps                   # everything "running" or "healthy"; "migrate" exits 0
 ```
@@ -179,7 +181,7 @@ Hides the server IP and absorbs attacks.
 4. Then lock the server so only Cloudflare can reach the public site:
 
 ```bash
-cd ~/kurotrace/deploy
+cd /opt/kurotrace/deploy
 sed -i '/^EDGE_IPS=/d;/^TRUSTED_PROXIES=/d' .env && bash cloudflare-ips.sh >> .env
 docker compose up -d
 ```
@@ -193,7 +195,7 @@ docker compose up -d
 When a pull request is merged:
 
 ```bash
-cd ~/kurotrace && bash deploy/update.sh
+cd /opt/kurotrace && bash deploy/update.sh
 ```
 
 ## 11. Backups off the server
@@ -205,7 +207,7 @@ in `deploy/.env`, then `docker compose --profile offsite up -d`.
 ## When something's wrong
 
 ```bash
-cd ~/kurotrace/deploy
+cd /opt/kurotrace/deploy
 docker compose ps
 docker compose logs --tail 100 web      # or admin, caddy, mysql, migrate
 ```
