@@ -108,20 +108,14 @@ export default function PrivacyPage() {
               <ul>
                 <li><strong>Our research team</strong>: only staff whose job is to review reports. Access is limited by role, every staff member signs in with two-step verification, and <strong>every time a report is opened it is recorded</strong> in a log that cannot be altered.</li>
                 <li><strong>Our private investigation partner</strong>, who helps trace scam networks. They work under a written agreement that limits use to this research and requires them to keep the information secure.</li>
-                <li><strong>Service providers</strong> that run the site for us, under contracts that only let them use the data to provide their service:</li>
-              </ul>
-              <div className="legal-scroll">
-                <table className="legal-table">
-                  <thead><tr><th>Provider</th><th>What they do</th></tr></thead>
-                  <tbody>
-                    <tr><td>Contabo (Germany)</td><td>Hosts our servers and encrypted backups</td></tr>
-                    <tr><td>Cloudflare</td><td>Protects the site from attacks, delivers pages quickly, and runs the &ldquo;are you human?&rdquo; check</td></tr>
-                    <tr><td>Hostinger</td><td>Sends our emails, such as sign-in codes and report updates</td></tr>
-                    <tr><td>Meta and Google</td><td><strong>Only if you accept advertising cookies</strong> on one of our campaign pages, to measure which adverts work</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <ul>
+                <li><strong>Service providers</strong> that run the site for us, under contracts that only let them use the data to provide their service:
+                  <ul>
+                    <li>our <strong>hosting provider</strong>, which runs our servers and stores our encrypted backups;</li>
+                    <li>our <strong>network security provider</strong>, which protects the site from attacks and runs the &ldquo;are you human?&rdquo; check;</li>
+                    <li>our <strong>email provider</strong>, which sends sign-in codes and report updates;</li>
+                    <li><strong>advertising platforms</strong>, <strong>only if you accept advertising cookies</strong> on one of our campaign pages, to measure which adverts work.</li>
+                  </ul>
+                </li>
                 <li><strong>Authorities</strong>, only when the law requires it, or when sharing the scammer&rsquo;s details (not yours) helps stop serious harm, such as alerting an exchange to a scam wallet.</li>
               </ul>
               <p><strong>We do not sell, rent or trade your personal information, and we never share it with &ldquo;recovery&rdquo; companies.</strong></p>
@@ -175,7 +169,7 @@ export default function PrivacyPage() {
           title: "International transfers",
           body: (
             <p>
-              Our servers are in the <strong>European Union (Germany)</strong>. Some providers, such as Cloudflare, operate worldwide. When information leaves the UK or EU, we
+              Our servers are in the <strong>European Union</strong>. Some of our service providers operate worldwide. When information leaves the UK or EU, we
               rely on <strong>approved safeguards</strong> such as the standard contractual clauses and the UK International Data Transfer Addendum.
             </p>
           ),
@@ -209,7 +203,7 @@ export default function PrivacyPage() {
               <p>We use a small number of cookies:</p>
               <ul>
                 <li><strong>Essential cookies</strong> keep you signed in, protect forms from bots and remember which campaign brought you. The site can&rsquo;t work without them.</li>
-                <li><strong>Advertising cookies</strong> (Meta and Google) are used <strong>only on our campaign pages and only if you accept them</strong>. They are never used on report, account or other pages.</li>
+                <li><strong>Advertising cookies</strong> from advertising platforms are used <strong>only on our campaign pages and only if you accept them</strong>. They are never used on report, account or other pages.</li>
               </ul>
             </>
           ),
@@ -217,7 +211,7 @@ export default function PrivacyPage() {
         {
           id: "children",
           title: "Children",
-          body: <p>Kuro Trace is for people aged <strong>16 and over</strong>. If you are younger, please ask a parent or guardian to report the scam for you.</p>,
+          body: <p>Kuro Trace is for people aged <strong>18 and over</strong>. If you are younger, please ask a parent or guardian to report the scam for you.</p>,
         },
         {
           id: "changes",
