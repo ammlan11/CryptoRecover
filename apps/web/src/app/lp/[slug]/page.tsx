@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { StartReportForm } from "@/components/forms/StartReportForm";
 import { AdTags } from "@/components/ads/AdTags";
 import { CAMPAIGNS, getCampaign } from "@/content/campaigns";
+import { OPERATOR } from "@/components/legal/Legal";
 
 /**
  * Ad landing pages: one goal (start a report), no site navigation, headline matching
@@ -104,8 +105,11 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
 
       <footer style={{ background: "var(--navy-950)", color: "#9aa6d1", fontSize: 13, padding: "24px 0" }}>
         <div className="wrap" style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
-          <span>© {new Date().getFullYear()} [Entity] · [Registered address]</span>
-          <Link href="/privacy" style={{ color: "#c9d1ef" }}>Privacy notice</Link>
+          <span>© {new Date().getFullYear()} {OPERATOR.name} · {OPERATOR.address}</span>
+          <span style={{ display: "flex", gap: 16 }}>
+            <Link href="/privacy" style={{ color: "#c9d1ef" }}>Privacy Policy</Link>
+            <Link href="/terms" style={{ color: "#c9d1ef" }}>Terms of Use</Link>
+          </span>
         </div>
       </footer>
     </>

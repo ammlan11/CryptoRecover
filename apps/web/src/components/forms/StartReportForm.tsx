@@ -68,7 +68,7 @@ export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { varia
         <BotCheck action="lead" resetOn={state} />
         {error && <p id="hero-error" className="form-msg err" role="alert">{error.message}</p>}
         <p className="fine">
-          About 5 minutes · We don&rsquo;t recover money and never charge · <Link href="/privacy">Privacy notice</Link>
+          About 5 minutes · We don&rsquo;t recover money and never charge · <Link href="/privacy">Privacy Policy</Link>
         </p>
       </form>
     );
@@ -102,7 +102,7 @@ export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { varia
       <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--ink-muted)", lineHeight: 1.45 }}>
         <input type="checkbox" name="consent" style={{ width: 18, height: 18, margin: 0, flex: "none" }} aria-invalid={error?.field === "consent" || undefined} />
         <span>
-          I agree my report is used for scam research, as described in the <Link href="/privacy" style={{ textDecoration: "underline" }}>privacy notice</Link>.
+          I agree my report is used for scam research, as described in the <Link href="/privacy" style={{ textDecoration: "underline" }}>Privacy Policy</Link>.
         </span>
       </label>
       <BotCheck action="lead" resetOn={state} />

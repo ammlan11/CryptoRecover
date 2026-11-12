@@ -65,11 +65,12 @@ export function SiteFooter() {
         </nav>
         <nav className="footer-col" aria-label="Legal">
           <span className="mono" style={{ fontSize: 12 }}>Legal</span>
-          <Link href="/privacy">Privacy notice</Link>
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Use</Link>
         </nav>
       </div>
       <div className="wrap footer-base">
-        <span>© 2024 Kuro Trace. All rights reserved.</span>
+        <span>© {new Date().getFullYear()} Kuro Trace. All rights reserved.</span>
       </div>
     </footer>
   );

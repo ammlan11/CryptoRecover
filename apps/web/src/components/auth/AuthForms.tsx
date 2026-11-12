@@ -79,7 +79,7 @@ export function SignupForm({ country = "" }: { country?: string }) {
       <PhoneField defaultCountry={typed.phoneCountry || country} defaultNumber={typed.phone} key={`${typed.phoneCountry}|${typed.phone}`} />
       <label className="check">
         <input type="checkbox" name="terms" required />
-        <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>
+        <span>I agree to the <Link href="/terms">Terms of Use</Link> and <Link href="/privacy">Privacy Policy</Link>.</span>
       </label>
       <BotCheck action="signup" resetOn={state} />
       <Message state={state} />
@@ -179,7 +179,7 @@ export function ContinueForm({ token, email, country = "" }: { token: string; em
       <PhoneField defaultCountry={typed.phoneCountry || country} defaultNumber={typed.phone} key={`${typed.phoneCountry}|${typed.phone}`} />
       <label className="check">
         <input type="checkbox" name="terms" required />
-        <span>I agree to the <Link href="/privacy">privacy notice</Link>.</span>
+        <span>I agree to the <Link href="/terms">Terms of Use</Link> and <Link href="/privacy">Privacy Policy</Link>.</span>
       </label>
       <Message state={state} />
       <Submit pending={pending}>Continue to my report →</Submit>

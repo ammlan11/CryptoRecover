@@ -41,7 +41,16 @@ export default async function Leads({ searchParams }: { searchParams: Promise<{ 
                   <td>{[l.utmSource, l.utmMedium, l.utmCampaign].filter(Boolean).join(" / ") || "—"}</td>
                   <td className="code">{l.gclid ? `gclid ${l.gclid.slice(0, 10)}…` : l.fbclid ? `fbclid ${l.fbclid.slice(0, 10)}…` : "—"}</td>
                   <td className="code">{l.landingPage ?? "—"}</td>
-                  <td>{l.convertedReport ? <Link className="code" href={`/reports/${l.convertedReport.publicRef}`}>{l.convertedReport.publicRef}</Link> : <span className="hint">Not yet</span>}</td>
+                  <td>
+                    {!l.convertedReport ? (
+                      <span className="hint">Not yet</span>
+                    ) : l.convertedReport.status === "DRAFT" ? (
+                      // Drafts aren't in the queue until the person submits them, so there's no page to open yet.
+                      <span className="hint" title="The report is started but not submitted yet">Started, not submitted</span>
+                    ) : (
+                      <Link className="code" href={`/reports/${l.convertedReport.publicRef}`}>{l.convertedReport.publicRef}</Link>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
