@@ -145,6 +145,8 @@ model Report {
   publicAlertConsentAt DateTime? // optional: may publish the indicators, never the reporter
   submittedAt      DateTime?
   closedAt         DateTime?
+  remindersSent    Int           @default(0) // reminders to finish this draft (max 2)
+  lastReminderAt   DateTime?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -371,6 +373,8 @@ model Lead {
   fbclid           String?    @db.VarChar(255)
   marketingConsent Boolean    @default(false)
   convertedReportId String?   @unique
+  remindersSent    Int        @default(0) // "finish your report" reminders sent (max 2)
+  lastReminderAt   DateTime?
   createdAt        DateTime   @default(now())
 
   convertedReport Report? @relation(fields: [convertedReportId], references: [id], onDelete: SetNull)
