@@ -110,7 +110,7 @@ export function renderEmail(content: EmailContent, site: string): string {
       </td></tr>
       <tr><td align="center" style="padding:22px 16px 8px;font-family:${SANS};font-size:12px;line-height:1.6;color:${C.faint}">
         Kuro Trace &middot; Crypto scam research<br>
-        <a href="${escapeHtml(siteUrl)}" style="color:${C.faint}">${host}</a> &middot; <a href="${escapeHtml(siteUrl)}/privacy" style="color:${C.faint}">Privacy notice</a>
+        <a href="${escapeHtml(siteUrl)}" style="color:${C.faint}">${host}</a> &middot; <a href="${escapeHtml(siteUrl)}/privacy" style="color:${C.faint}">Privacy Policy</a>
       </td></tr>
     </table>
   </td></tr>

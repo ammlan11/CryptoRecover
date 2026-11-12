@@ -153,6 +153,41 @@ export const templates = {
         after: ["The link works for 7 days. Your report is encrypted and never published with your name."],
       },
     ),
+  /** Reminder to someone who started a report on the home or campaign page but hasn't continued. */
+  reminderContinue: (link: string, final: boolean) =>
+    mail(
+      final ? "Last reminder: your scam report is waiting" : "Your scam report is waiting",
+      `You started a scam report on Kuro Trace but haven't finished it yet. It takes about 5 minutes, and every report helps us find the people behind these scams and warn others.\n\nPick up where you left off:\n\n${link}\n\nThe link works for 7 days.${final ? " This is the last reminder we'll send." : " We'll remind you once more, then stop."} Changed your mind? Just ignore this email.`,
+      {
+        preheader: "It takes about 5 minutes, and it helps warn others.",
+        heading: final ? "Last reminder: your report is waiting" : "Your report is waiting",
+        intro: [
+          "You started a scam report on Kuro Trace but haven't finished it yet.",
+          "It takes about 5 minutes. Every report helps us find the people behind these scams and warn others before they lose money too.",
+        ],
+        button: { label: "Finish my report", url: link },
+        after: [
+          `The link works for 7 days. ${final ? "This is the last reminder we'll send." : "We'll remind you once more, then stop."}`,
+          "Changed your mind? Just ignore this email.",
+        ],
+      },
+    ),
+  /** Reminder to an account holder with an unsent draft. */
+  reminderDraft: (ref: string, final: boolean) =>
+    mail(
+      final ? `Last reminder: report ${ref} isn't sent yet` : `Report ${ref} isn't sent yet`,
+      `Your report ${ref} is saved as a draft, but it hasn't been sent to our research team yet. Nothing reaches them until you press "Send report".\n\nFinish it here: ${siteUrl}/account/reports/${ref}/edit\n\n${final ? "This is the last reminder we'll send about it." : "We'll remind you once more, then stop."}`,
+      {
+        preheader: "Our team can't see it until you send it.",
+        heading: "Your report isn't sent yet",
+        intro: [
+          `Your report ${ref} is saved as a draft, but it hasn't been sent to our research team yet.`,
+          "Nothing reaches them until you press \"Send report\". It only takes a few minutes to finish.",
+        ],
+        button: { label: "Finish and send", url: `${siteUrl}/account/reports/${ref}/edit` },
+        after: [final ? "This is the last reminder we'll send about this report." : "We'll remind you once more, then stop."],
+      },
+    ),
   passwordChanged: () =>
     mail(
       "Your password was changed",

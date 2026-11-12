@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
-    "test:e2e": "node test/e2e/smoke.mjs"
+    "test:e2e": "node test/e2e/smoke.mjs",
+    "reminders": "tsx --env-file-if-exists=../../.env --conditions=react-server scripts/send-reminders.ts"
   },
   "dependencies": {
     "@kurotrace/core": "*",

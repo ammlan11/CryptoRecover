@@ -74,6 +74,14 @@ services:
     working_dir: /app/apps/admin
     command: ["sh", "-c", "while true; do node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/scan-pending.ts || true; sleep 300; done"]
 
+  # "Finish your report" reminders (max 2 per started report), checked every 30 minutes.
+  reminders:
+    <<: *app
+    # Background job, not a web server: the image's web health check doesn't apply.
+    healthcheck: { disable: true }
+    working_dir: /app/apps/web
+    command: ["sh", "-c", "while true; do node /app/node_modules/tsx/dist/cli.mjs --conditions=react-server scripts/send-reminders.ts || true; sleep 1800; done"]
+
   # Refreshes the free threat lists the wallet checker uses (sanctions, scam sites):
   # once at start-up, then every 12 hours.
   threat-lists:

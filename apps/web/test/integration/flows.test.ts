@@ -27,6 +27,7 @@ const { storage } = await import("@kurotrace/services/storage");
 const { protectEmail } = await import("@kurotrace/services/crypto");
 const phone = await import("@/server/phone");
 const loginCodes = await import("@/server/login-codes");
+const reminders = await import("@/server/reminders");
 const lastCode = () => /code is:\s+(\d{6})/.exec(outbox.at(-1)!.text)![1]!;
 
 const PASSWORD = "correct horse battery staple";
@@ -387,3 +388,56 @@ describe.skipIf(!process.env.CLAMAV_HOST)("malware scanning (live ClamAV)", () =
     expect((await prisma.evidence.findFirstOrThrow({ where: { reportId: draft.id } })).scanStatus).toBe("CLEAN");
   });
 });
+
+describe("finish-your-report reminders", () => {
+  const HOUR = 60 * 60 * 1000;
+  const sentTo = (email: string, from: number) => outbox.slice(from).filter((m) => m.to === email);
+
+  it("reminds people who started a report twice, a day apart, then stops", async () => {
+    const { emailHash, emailEnc } = protectEmail("starter@example.com", "lead.email");
+    const lead = await prisma.lead.create({ data: { source: "CAMPAIGN_FORM", emailHash, emailEnc } });
+    // A second use of the form by the same person must not double the emails.
+    await prisma.lead.create({ data: { source: "HERO_FORM", emailHash, emailEnc, createdAt: new Date(Date.now() - HOUR) } });
+    const t0 = lead.createdAt.getTime();
+    const before = outbox.length;
+
+    await reminders.sendDueReminders(new Date(t0 + 2 * HOUR)); // too early
+    expect(sentTo("starter@example.com", before)).toHaveLength(0);
+
+    await reminders.sendDueReminders(new Date(t0 + 25 * HOUR));
+    await reminders.sendDueReminders(new Date(t0 + 26 * HOUR)); // running again sends nothing new
+    const first = sentTo("starter@example.com", before);
+    expect(first).toHaveLength(1);
+    expect(first[0]!.subject).toBe("Your scam report is waiting");
+    expect(first[0]!.html).toContain("Finish my report");
+    // The reminder carries a working link that creates the account.
+    expect(await accounts.inspectContinueLink(linkToken(first[0]!.text))).toMatchObject({ email: "starter@example.com" });
+
+    await reminders.sendDueReminders(new Date(t0 + 73 * HOUR));
+    await reminders.sendDueReminders(new Date(t0 + 120 * HOUR));
+    const all = sentTo("starter@example.com", before);
+    expect(all.map((m) => m.subject)).toEqual(["Your scam report is waiting", "Last reminder: your scam report is waiting"]);
+  });
+
+  it("doesn't remind someone who already has an account, and reminds about unsent drafts", async () => {
+    const owner = await verifiedUser("drafter@example.com");
+    const { emailHash, emailEnc } = protectEmail("drafter@example.com", "lead.email");
+    await prisma.lead.create({ data: { source: "HERO_FORM", emailHash, emailEnc, createdAt: new Date(Date.now() - 30 * HOUR) } });
+    const draft = await reports.createDraft(owner.id, "FAKE_TRADING_APP");
+    const sent = await reports.createDraft(owner.id, "MESSAGING_BROKER");
+    await prisma.report.update({ where: { id: sent.id }, data: { status: "RECEIVED", submittedAt: new Date() } });
+    const before = outbox.length;
+
+    // Reminder times are counted from when the draft was started and last edited.
+    const t0 = Date.now();
+    await prisma.report.updateMany({ where: { userId: owner.id }, data: { createdAt: new Date(t0 - 30 * HOUR) } });
+    await prisma.$executeRaw`UPDATE Report SET updatedAt = ${new Date(t0 - 13 * HOUR)} WHERE userId = ${owner.id}`;
+    await reminders.sendDueReminders(new Date(t0));
+
+    const mails = sentTo("drafter@example.com", before);
+    expect(mails).toHaveLength(1); // the draft reminder only, not the lead one
+    expect(mails[0]!.subject).toBe(`Report ${draft.publicRef} isn't sent yet`);
+    expect(mails[0]!.text).toContain(`/account/reports/${draft.publicRef}/edit`);
+  });
+});
+
