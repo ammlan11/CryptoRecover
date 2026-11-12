@@ -104,7 +104,7 @@ export function AdTags() {
     <div className="consent" role="dialog" aria-live="polite" aria-label="Ad measurement cookies">
       <p>
         Can we use cookies from Meta and Google to measure which ads bring people here? It helps us reach more scam
-        victims. Nothing you write in a report is ever shared. <Link href="/privacy">Privacy notice</Link>
+        victims. Nothing you write in a report is ever shared. <Link href="/privacy">Privacy Policy</Link>
       </p>
       <div className="consent-actions">
         <button type="button" className="btn btn-line-w" onClick={() => choose("no")}>No thanks</button>

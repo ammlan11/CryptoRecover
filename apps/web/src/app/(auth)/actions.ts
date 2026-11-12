@@ -57,7 +57,7 @@ async function signup(_prev: AuthState, form: FormData): Promise<AuthState> {
   if (!(await passesBotCheck(form, "signup"))) return { status: "error", message: BOT_CHECK_FAILED };
   const parsed = z.object({ email, password }).safeParse({ email: form.get("email"), password: form.get("password") });
   if (!parsed.success) return { status: "error", message: "Enter a valid email and password." };
-  if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the privacy notice to continue." };
+  if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the Terms of Use and Privacy Policy to continue." };
   let phone: string;
   try {
     phone = normalizePhone(String(form.get("phone") ?? "").slice(0, 40), String(form.get("phoneCountry") ?? "").slice(0, 2));
@@ -157,7 +157,7 @@ export async function continueAction(prev: AuthState, form: FormData): Promise<A
 
 async function continueAccount(_prev: AuthState, form: FormData): Promise<AuthState> {
   if (await limited(signupLimiter, "continue")) return SLOW_DOWN;
-  if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the privacy notice to continue." };
+  if (form.get("terms") !== "on") return { status: "error", message: "Please agree to the Terms of Use and Privacy Policy to continue." };
   let phone: string;
   try {
     phone = normalizePhone(String(form.get("phone") ?? "").slice(0, 40), String(form.get("phoneCountry") ?? "").slice(0, 2));

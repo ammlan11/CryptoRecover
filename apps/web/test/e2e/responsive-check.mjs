@@ -16,7 +16,7 @@ const SHOTS = process.env.RESPONSIVE_SHOTS ?? "/tmp/responsive";
 const WIDTHS = [360, 390, 768];
 mkdirSync(SHOTS, { recursive: true });
 
-const PUBLIC = ["/", "/scams", "/scams/pig-butchering", "/privacy", "/lp/broker-scams", "/lp/fake-apps", "/lp/report", "/login", "/signup", "/forgot-password"];
+const PUBLIC = ["/", "/scams", "/scams/pig-butchering", "/privacy", "/terms", "/lp/broker-scams", "/lp/fake-apps", "/lp/report", "/login", "/signup", "/forgot-password"];
 const ACCOUNT = ["/account/reports", "/account/reports/new", "/account/settings", "/account/settings/two-step", "/account/settings/phone", "/account/issues/new"];
 const ADMIN_PAGES = ["/", "/reports", "/indicators", "/leads", "/issues", "/audit", "/staff", "/account"];
 
