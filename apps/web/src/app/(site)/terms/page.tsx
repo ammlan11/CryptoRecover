@@ -49,7 +49,7 @@ export default function TermsPage() {
         {
           id: "eligibility",
           title: "Who can use it",
-          body: <p>You must be <strong>16 or older</strong> to create an account or submit a report. You can use the public pages and the wallet checker at any age.</p>,
+          body: <p>You must be <strong>18 or older</strong> to create an account or submit a report. You can use the public pages and the wallet checker at any age.</p>,
         },
         {
           id: "account",
