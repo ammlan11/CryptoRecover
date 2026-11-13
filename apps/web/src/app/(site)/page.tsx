@@ -13,7 +13,12 @@ export const metadata: Metadata = { alternates: { canonical: "/" } };
 const FAQ = [
   {
     q: "How do I report a crypto scam?",
-    a: "Share what happened using the form at the top of this page. It takes about 5 minutes. Also report it to your local police and to the exchange or bank you paid from.",
+    a: "Share what happened using the form at the top of this page. It takes about 5 minutes. Also report it to your local police and to the exchange or bank you paid from. In the UAE, report it to Dubai Police through the eCrime platform at ecrime.ae or the Dubai Police app.",
+  },
+  {
+    q: "I'm in the UAE. Where do I report it officially?",
+    a: "Report it to Dubai Police through the eCrime platform (ecrime.ae) or the Dubai Police app; in other emirates, contact your local police. Call your bank or exchange straight away so they can try to stop or flag the transfer, and keep screenshots of every chat and payment. Then share it with us too, so we can warn others.",
+    link: { href: "https://www.ecrime.ae", label: "Open the Dubai Police eCrime platform" },
   },
   { q: "Can you get my money back?", a: "No. Kuro Trace is a research project, not a recovery service. Be wary of anyone who offers to recover crypto for a fee." },
   { q: "Why should I report it?", a: "Your report shows how the scam works and links the wallets and sites behind it, so we can warn others sooner." },
@@ -56,9 +61,14 @@ export default function HomePage() {
           </p>
           <StartReportForm variant="hero" />
           <FocusStartForm />
-          <div className="hero-account">
-            <span>Want to set up your account first?</span>
-            <Link href="/signup" className="btn btn-line-w">Create a free account</Link>
+          <div className="hero-more" aria-label="Other ways to use Kuro Trace">
+            <span className="hero-more-label">Not been scammed? Stay a step ahead:</span>
+            <a href="#check" className="btn btn-line-w btn-sm">Check a website or wallet</a>
+            <a href="#alerts" className="btn btn-line-w btn-sm">Get the weekly scam alert</a>
+          </div>
+          <div className="hero-more">
+            <span className="hero-more-label">Want to set up your account first?</span>
+            <Link href="/signup" className="btn btn-line-w btn-sm">Create a free account</Link>
           </div>
         </div>
         <div className="hero-art">
@@ -91,6 +101,28 @@ export default function HomePage() {
             </p>
           </div>
           <Checker />
+        </div>
+      </section>
+
+      <section id="alerts" className="section" style={{ overflow: "hidden" }}>
+        <div className="wrap alerts">
+          <div className="alerts-copy">
+            <div className="eyebrow">Free weekly scam alert</div>
+            <h2 className="h2">Know the newest crypto scams before they reach you</h2>
+            <p className="muted" style={{ lineHeight: 1.6, margin: "16px 0 0", maxWidth: 560 }}>
+              One short email a week: newly confirmed fake platforms, the scripts scammers are using, and how to spot them.
+            </p>
+            <NewsletterForm />
+          </div>
+          <div className="alert-preview" aria-label="Example scam alert">
+            <div className="card-tag">Example scam alert</div>
+            <div style={{ fontSize: 20, fontWeight: 500, margin: "10px 0 14px" }}>3 new fake trading apps confirmed</div>
+            <div style={{ display: "grid", gap: 10 }}>
+              <div className="alert-row"><span>fake-trade-app.example</span><span style={{ color: "var(--danger-text)", fontWeight: 600 }}>Confirmed</span></div>
+              <div className="alert-row"><span>New script: &ldquo;tax unlock fee&rdquo;</span><span style={{ color: "var(--ink-muted)" }}>Pattern</span></div>
+              <div className="alert-row"><span>How to spot it in 30 seconds</span><span style={{ color: "var(--blue)" }}>Guide</span></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -169,27 +201,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="alerts" className="section" style={{ overflow: "hidden" }}>
-        <div className="wrap alerts">
-          <div className="alerts-copy">
-            <div className="eyebrow">Free weekly scam alert</div>
-            <h2 className="h2">Know the newest crypto scams before they reach you</h2>
-            <p className="muted" style={{ lineHeight: 1.6, margin: "16px 0 0", maxWidth: 560 }}>
-              One short email a week: newly confirmed fake platforms, the scripts scammers are using, and how to spot them.
-            </p>
-            <NewsletterForm />
-          </div>
-          <div className="alert-preview" aria-label="Example scam alert">
-            <div className="card-tag">Scam alert · preview</div>
-            <div style={{ fontSize: 20, fontWeight: 500, margin: "10px 0 14px" }}>3 new fake trading apps confirmed</div>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div className="alert-row"><span>[app-name-sample].app</span><span style={{ color: "var(--danger-text)", fontWeight: 600 }}>Confirmed</span></div>
-              <div className="alert-row"><span>New script: &ldquo;tax unlock fee&rdquo;</span><span style={{ color: "var(--ink-muted)" }}>Pattern</span></div>
-              <div className="alert-row"><span>How to spot it in 30 seconds</span><span style={{ color: "var(--blue)" }}>Guide</span></div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <section className="light section">
         <div className="wrap signs">
@@ -220,6 +231,9 @@ export default function HomePage() {
               <details key={f.q} open={i === 0}>
                 <summary>{f.q}</summary>
                 <p>{f.a}</p>
+                {"link" in f && f.link && (
+                  <p><a href={f.link.href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>{f.link.label} ↗</a></p>
+                )}
               </details>
             ))}
           </div>
