@@ -106,9 +106,13 @@ img, svg { max-width: 100%; }
 .hero-form-row > .btn { flex: 1 1 180px; min-height: 50px; }
 .fine { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-muted); }
 .fine a { color: var(--blue); text-decoration: underline; }
-.hero-account { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 18px; max-width: 680px; color: var(--on-dark-muted); font-size: 15px; }
-.hero-account .btn { min-height: 46px; }
-@media (max-width: 640px) { .hero-account { flex-direction: column; align-items: stretch; text-align: center; } .hero-account .btn { width: 100%; } }
+/* Under the hero form: lighter actions for people who haven't been scammed. */
+.hero-more { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 22px; max-width: 680px; }
+.hero-more-label { width: 100%; color: var(--on-dark-muted); font-size: 14px; }
+.btn-sm { min-height: 44px; padding: 0 16px; font-size: 13px; }
+.on-behalf { margin-top: 4px !important; }
+#check, #alerts { scroll-margin-top: 24px; }
+@media (max-width: 640px) { .hero-more .btn { flex: 1 1 100%; } }
 #start { scroll-margin-top: 24px; }
 .hero-art { flex: 1 1 360px; min-width: 0; max-width: 500px; margin: 0 auto; }
 

@@ -70,6 +70,7 @@ export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { varia
         <p className="fine">
           About 5 minutes · We don&rsquo;t recover money and never charge · <Link href="/privacy">Privacy Policy</Link>
         </p>
+        <p className="fine on-behalf">Reporting for a parent, partner or friend? That helps too.</p>
       </form>
     );
   }
@@ -111,6 +112,7 @@ export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { varia
         {pending ? "Saving…" : "Continue →"}
       </button>
       <p className="fine" style={{ textAlign: "center", margin: 0 }}>About 5 minutes · You can stop and finish later</p>
+      <p className="fine" style={{ textAlign: "center", margin: 0 }}>Reporting for a parent, partner or friend? That helps too.</p>
     </form>
   );
 }
