@@ -21,12 +21,12 @@
     "email-preview": "tsx --env-file-if-exists=../../.env --conditions=react-server scripts/email-preview.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-kms": "^3",
-    "@aws-sdk/client-s3": "^3",
+    "@aws-sdk/client-kms": "^3.1166.0",
+    "@aws-sdk/client-s3": "^3.1166.0",
     "@kurotrace/core": "*",
     "@kurotrace/db": "*",
     "@types/nodemailer": "8.0.2",
-    "nodemailer": "10.3.1",
+    "nodemailer": "10.5.0",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
