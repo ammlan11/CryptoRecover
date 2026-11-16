@@ -193,9 +193,11 @@ try {
     await lp.check("#panel-protect input[name=whatsappOptIn]");
     await lp.click("button:has-text('Send me the free checklist')");
     await lp.getByText("Your free checklist is on its way").waitFor();
-    const row = sql(`SELECT source, whatsappOptIn, phoneEnc IS NOT NULL, consentAt IS NOT NULL, utmCampaign FROM Lead ORDER BY createdAt DESC LIMIT 1`).split(/\s+/);
+    // LEAD is a reserved word in MySQL 8; \` reaches the shell as an escaped backtick.
+    const LEAD = "\\`Lead\\`";
+    const row = sql(`SELECT source, whatsappOptIn, phoneEnc IS NOT NULL, consentAt IS NOT NULL, utmCampaign FROM ${LEAD} ORDER BY createdAt DESC LIMIT 1`).split(/\s+/);
     assert.deepEqual(row, ["LP_PROTECT", "1", "1", "1", "e2e"]);
-    assert.ok(!sql(`SELECT phoneEnc FROM Lead WHERE source='LP_PROTECT' ORDER BY createdAt DESC LIMIT 1`).includes("501234567"), "phone must be encrypted");
+    assert.ok(!sql(`SELECT phoneEnc FROM ${LEAD} WHERE source='LP_PROTECT' ORDER BY createdAt DESC LIMIT 1`).includes("501234567"), "phone must be encrypted");
     const mails = readFileSync(MAIL_FILE, "utf8").trim().split("\n").map((l) => JSON.parse(l));
     assert.ok(mails.some((m) => m.to === protectEmail && m.subject === "Your free crypto scam checklist"), "checklist email sent");
     // The other tab is the first step of a report, with its own optional phone and contact opt-in.
