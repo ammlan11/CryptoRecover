@@ -449,7 +449,8 @@ describe("emails sent counter", () => {
     await accounts.requestPasswordReset("counted@example.com");
     expect(await prisma.emailSend.count({ where: { kind: "resetPassword", ok: true } })).toBe(before + 1);
     const row = await prisma.emailSend.findFirst({ where: { kind: "resetPassword" }, orderBy: { id: "desc" } });
-    expect(JSON.stringify(row)).not.toContain("counted@example.com");
+    // Only the type, outcome and time are stored: no address or content.
+    expect(Object.keys(row!).sort()).toEqual(["createdAt", "id", "kind", "ok"]);
   });
 });
 
