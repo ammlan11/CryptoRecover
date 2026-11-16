@@ -12,10 +12,6 @@ export interface Campaign {
   defaultScamType: ScamTypeValue;
   quotes: string[];
   quotesNote: string;
-  /** Optional reassurance line shown under the intro. */
-  care?: string;
-  /** Also offer the weekly scam alert, for visitors who haven't been scammed. */
-  alerts?: boolean;
   /** Heading above the quotes (default "Sound familiar?"). */
   quotesTitle?: string;
 }
@@ -23,11 +19,9 @@ export interface Campaign {
 export const CAMPAIGNS: Campaign[] = [
   {
     slug: "behind-every-scam",
-    eyebrow: "Crypto scam research · You're not alone",
+    eyebrow: "Crypto scam research",
     headline: "Behind every scam is a person.",
-    sub: "Tell us what happened, for yourself or for someone you care about. Our private investigators study every report to expose the people and wallets behind it, and we publish warnings so fewer people fall for it. Free, confidential, and we never ask for money.",
-    care: "No one who's been scammed should feel alone. It's never their fault.",
-    alerts: true,
+    sub: "No one who's been scammed should feel alone, and it's never their fault. Our research team is mapping how these scams work so fewer people get caught.",
     defaultScamType: "UNSURE",
     quotesTitle: "Lines scammers use on thousands of people",
     quotes: [

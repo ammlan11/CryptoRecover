@@ -14,6 +14,8 @@ export interface EmailContent {
   /** Paragraphs before the button or code. */
   intro: string[];
   button?: { label: string; url: string };
+  /** Lists after the intro, such as a checklist. */
+  lists?: { title: string; items: string[]; ordered?: boolean }[];
   /** A one-time code shown large (sign-in codes). */
   code?: string;
   /** Small print after the button or code: expiry, "if this wasn't you", … */
@@ -98,6 +100,12 @@ export function renderEmail(content: EmailContent, site: string): string {
         <h1 style="margin:0 0 18px;font-family:${SANS};font-size:24px;line-height:1.3;font-weight:600;color:${C.ink}">${escapeHtml(content.heading)}</h1>
         ${alert}
         ${content.intro.map((t) => p(t)).join("\n        ")}
+        ${(content.lists ?? [])
+          .map((l) => {
+            const tag = l.ordered ? "ol" : "ul";
+            return `<p style="margin:8px 0 6px;font-family:${SANS};font-size:16px;font-weight:600;color:${C.ink}">${escapeHtml(l.title)}</p><${tag} style="margin:0 0 20px;padding-left:22px;font-family:${SANS};font-size:15px;line-height:1.7;color:${C.muted}">${l.items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</${tag}>`;
+          })
+          .join("\n        ")}
         ${button}${code}
         ${(content.after ?? []).map((t) => p(t, `font-size:14px;color:${C.faint}`)).join("\n        ")}
       </td></tr>

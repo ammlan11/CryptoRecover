@@ -17,7 +17,10 @@ import { clientIp } from "@/lib/request";
 import { BOT_CHECK_FAILED, passesBotCheck } from "@/lib/bot-check";
 import { sendLeadConversion } from "@/server/conversions";
 import { checkThreatLists, listsUpdatedAt, type ListMatch } from "@kurotrace/services/threat-lists";
-import { protectEmail } from "@kurotrace/services/crypto";
+import { encryptText, protectEmail } from "@kurotrace/services/crypto";
+import { sendEmail, templates } from "@kurotrace/services/email";
+import { aad } from "@kurotrace/services/records";
+import { normalizePhone, PhoneError } from "@/server/phone";
 import { sendContinueReportLink } from "@/server/accounts";
 
 export type FormState =
@@ -58,13 +61,39 @@ async function attribution() {
   return parseAttribution((await cookies()).get(ATTRIBUTION_COOKIE)?.value);
 }
 
-async function saveLead(source: LeadSource, address: string, extra: { scamType?: string; lossBand?: string; marketingConsent?: boolean }): Promise<string> {
+type LeadExtra = {
+  scamType?: string;
+  lossBand?: string;
+  marketingConsent?: boolean;
+  /** E.164, already validated. */
+  phone?: string;
+  whatsappOptIn?: boolean;
+  contactOptIn?: boolean;
+};
+
+/** Phone and consents for a lead: the phone is encrypted, consents are time-stamped. */
+function contactFields(extra: LeadExtra) {
+  const consented = Boolean(extra.marketingConsent || extra.whatsappOptIn || extra.contactOptIn);
+  return {
+    ...(extra.phone ? { phoneEnc: encryptText(extra.phone, aad.leadPhone()) } : {}),
+    ...(extra.whatsappOptIn ? { whatsappOptIn: true } : {}),
+    ...(extra.contactOptIn ? { contactOptIn: true } : {}),
+    ...(consented ? { consentAt: new Date() } : {}),
+  };
+}
+
+async function saveLead(source: LeadSource, address: string, extra: LeadExtra): Promise<string> {
   const { emailHash, emailEnc } = protectEmail(address, "lead.email");
   const recent = await prisma.lead.findFirst({
     where: { emailHash, source, createdAt: { gt: new Date(Date.now() - DAY) } },
     select: { id: true },
   });
-  if (recent) return recent.id; // same person, same form, within a day: don't duplicate
+  if (recent) {
+    // Same person, same form, within a day: don't duplicate, but keep a newly given phone or consent.
+    const update = contactFields(extra);
+    if (Object.keys(update).length) await prisma.lead.update({ where: { id: recent.id }, data: update });
+    return recent.id;
+  }
   const attr = await attribution();
   const lead = await prisma.lead.create({
     data: {
@@ -74,6 +103,7 @@ async function saveLead(source: LeadSource, address: string, extra: { scamType?:
       scamType: extra.scamType as never,
       lossBand: extra.lossBand as never,
       marketingConsent: extra.marketingConsent ?? false,
+      ...contactFields(extra),
       landingPage: attr.landing,
       utmSource: attr.utm_source,
       utmMedium: attr.utm_medium,
@@ -94,6 +124,45 @@ const startSchema = z.object({
   lossBand: z.enum(lossBands).optional(),
   email,
 });
+
+/** Optional mobile number: undefined when empty, the E.164 number, or the error to show. */
+function optionalPhone(form: FormData): string | undefined | PhoneError {
+  const raw = String(form.get("phone") ?? "").trim().slice(0, 40);
+  if (!raw) return undefined;
+  try {
+    return normalizePhone(raw, String(form.get("phoneCountry") ?? "").slice(0, 2));
+  } catch (error) {
+    return error instanceof PhoneError ? error : new PhoneError("Check your mobile number.");
+  }
+}
+
+/**
+ * "Keep me protected" on the ad landing pages: email (required), mobile (optional) and an
+ * optional WhatsApp alerts opt-in. Sends the free checklist they asked for, and counts as a
+ * lead for the ad platforms. We contact them only for what they ticked.
+ */
+export async function protectSignup(_prev: FormState, form: FormData): Promise<FormState> {
+  const success: FormState = { status: "success", message: "Done. Your free checklist is on its way: check your inbox (and spam, just in case)." };
+  if (isBot(form)) return success;
+  if (!leadLimiter.check(`lead:${await clientIp()}`).allowed) return { status: "error", message: SLOW_DOWN };
+  if (!(await passesBotCheck(form, "lead"))) return { status: "error", message: BOT_CHECK_FAILED };
+  const parsed = email.safeParse(form.get("email"));
+  if (!parsed.success) return { status: "error", message: "Enter a valid email address", field: "email" };
+  const phone = optionalPhone(form);
+  if (phone instanceof PhoneError) return { status: "error", message: phone.message, field: "phone" };
+  const whatsappOptIn = Boolean(phone) && form.get("whatsappOptIn") === "on";
+  try {
+    const leadId = await saveLead("LP_PROTECT", parsed.data, { phone, whatsappOptIn });
+    await sendEmail({ to: parsed.data, ...templates.protectChecklist(whatsappOptIn) });
+    const eventId = `protect-${leadId}`;
+    const attr = await attribution();
+    await sendLeadConversion({ eventId, email: parsed.data, phone, fbclid: attr.fbclid, landing: attr.landing, content: "protect" });
+    return { ...success, eventId };
+  } catch (error) {
+    console.error("protectSignup failed", error instanceof Error ? error.message : error);
+    return { status: "error", message: GENERIC_ERROR };
+  }
+}
 
 /** Hero and campaign forms: the first step of a report. */
 export async function startReport(_prev: FormState, form: FormData): Promise<FormState> {
@@ -118,13 +187,20 @@ export async function startReport(_prev: FormState, form: FormData): Promise<For
   if (parsed.data.source === "CAMPAIGN_FORM" && form.get("consent") !== "on") {
     return { status: "error", message: "Please agree to the research use of your report to continue.", field: "consent" };
   }
+  const phone = optionalPhone(form);
+  if (phone instanceof PhoneError) return { status: "error", message: phone.message, field: "phone" };
   try {
-    const leadId = await saveLead(parsed.data.source, parsed.data.email, { scamType: parsed.data.scamType, lossBand: parsed.data.lossBand });
+    const leadId = await saveLead(parsed.data.source, parsed.data.email, {
+      scamType: parsed.data.scamType,
+      lossBand: parsed.data.lossBand,
+      phone,
+      contactOptIn: form.get("contactOptIn") === "on",
+    });
     await sendContinueReportLink(parsed.data.email, leadId);
     // Same id for the browser pixel and the server-side event, so the lead is counted once.
     const eventId = `lead-${leadId}`;
     const attr = await attribution();
-    await sendLeadConversion({ eventId, email: parsed.data.email, fbclid: attr.fbclid, landing: attr.landing, content: "report" });
+    await sendLeadConversion({ eventId, email: parsed.data.email, phone, fbclid: attr.fbclid, landing: attr.landing, content: "report" });
     return { ...success, eventId };
   } catch (error) {
     console.error("startReport failed", error instanceof Error ? error.message : error);

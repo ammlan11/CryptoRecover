@@ -32,6 +32,7 @@ export const SOURCE: Record<string, string> = {
   CAMPAIGN_FORM: "Ad landing page",
   CHECKER_WATCH: "Checker watch-list",
   NEWSLETTER: "Weekly alert",
+  LP_PROTECT: "Keep me protected (ad page)",
 };
 
 export const fmt = (d: Date | null | undefined) =>
@@ -59,6 +60,7 @@ export const EMAIL_KIND: Record<string, string> = {
   infoNeeded: "Question from the team",
   reportClosed: "Report closed",
   reportReceived: "Report received",
+  protectChecklist: "Free checklist (ad page)",
   other: "Other",
 };
 

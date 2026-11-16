@@ -3,8 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SmallOrb } from "@/components/Orb";
 import { Logo } from "@/components/Logo";
-import { NewsletterForm } from "@/components/forms/NewsletterForm";
-import { StartReportForm } from "@/components/forms/StartReportForm";
+import { LeadCard } from "@/components/forms/LeadCard";
 import { AdTags } from "@/components/ads/AdTags";
 import { CAMPAIGNS, getCampaign } from "@/content/campaigns";
 import { OPERATOR } from "@/components/legal/Legal";
@@ -58,33 +57,16 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
               {campaign.headline}
             </h1>
             <p className="hero-sub" style={{ maxWidth: 560 }}>{campaign.sub}</p>
-            {campaign.care && <p className="hero-care">{campaign.care}</p>}
             <ul style={{ listStyle: "none", padding: "24px 0 0", margin: "32px 0 0", display: "grid", gap: 14, fontSize: 16, borderTop: "1px solid var(--line-dark)" }}>
               <li style={{ display: "flex", gap: 12, alignItems: "center" }}><Check />Free to report, in any country</li>
               <li style={{ display: "flex", gap: 12, alignItems: "center" }}><Check />Encrypted, and never published with your name</li>
               <li style={{ display: "flex", gap: 12, alignItems: "center" }}><Check />We never ask for money or your seed phrase</li>
             </ul>
           </div>
-          <div style={{ position: "relative", flex: "1 1 400px", minWidth: 0, background: "#fff", color: "var(--ink)", borderRadius: 12, padding: 32 }}>
-            <div className="card-tag">Step 1 of 3</div>
-            <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-.02em", margin: "6px 0 16px" }}>Share how the scam worked</div>
-            <StartReportForm variant="campaign" defaultScamType={campaign.defaultScamType} />
+          <div style={{ position: "relative", flex: "1 1 400px", minWidth: 0 }}>
+            <LeadCard defaultScamType={campaign.defaultScamType} />
           </div>
         </section>
-
-        {campaign.alerts && (
-          <section className="wrap" style={{ paddingBottom: 72 }} aria-label="Weekly scam alert">
-            <div className="hero-alt" style={{ maxWidth: "none", display: "flex", flexWrap: "wrap", gap: "16px 40px", alignItems: "center" }}>
-              <div style={{ flex: "1 1 320px" }}>
-                <div className="hero-alt-title" style={{ fontSize: 22 }}>Not been scammed? Stay a step ahead.</div>
-                <div className="hero-alt-sub">Get the weekly scam alert: newly confirmed fake platforms and the scripts scammers are using, in one short email. Share it with the people you look out for.</div>
-              </div>
-              <div style={{ flex: "1 1 360px" }}>
-                <NewsletterForm id="lp-alert-email" compact />
-              </div>
-            </div>
-          </section>
-        )}
 
         <section className="light section" style={{ padding: "80px 0" }}>
           <div className="wrap">

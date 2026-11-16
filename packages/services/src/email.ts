@@ -121,6 +121,22 @@ function mail(kind: string, subject: string, text: string, content: EmailContent
   return { kind, subject, text: `${text}${footer}`, html: renderEmail(content, siteUrl) };
 }
 
+const CHECKLIST = [
+  "A stranger starts the conversation",
+  "The returns sound effortless",
+  "You're told to decide today",
+  "The platform is on no regulator's list",
+  "Withdrawing needs a new payment",
+  "They ask you to keep it from your bank",
+  "Anyone wants your seed phrase",
+];
+const BEFORE_YOU_SEND = [
+  "Look the platform up on your financial regulator's register.",
+  "Paste the wallet or website into a scam checker.",
+  "Talk to someone you trust before you pay.",
+  "Never share your seed phrase or private keys, with anyone.",
+];
+
 const resetButton = { label: "Reset my password", url: `${siteUrl}/forgot-password` };
 const reportButton = (ref: string) => ({ label: "Open my report", url: `${siteUrl}/account/reports/${ref}` });
 
@@ -185,6 +201,27 @@ export const templates = {
         ],
         button: { label: "Create account and continue", url: link },
         after: ["The link works for 7 days. Your report is encrypted and never published with your name."],
+      },
+    ),
+  /** "Keep me protected" on the ad landing pages: the free checklist they asked for. */
+  protectChecklist: (whatsapp: boolean) =>
+    mail(
+      "protectChecklist",
+      "Your free crypto scam checklist",
+      `Here is your free checklist. Keep it handy, and share it with the people you look out for.\n\nThe 7 signs of a crypto scam. If two or more sound familiar, stop sending money:\n${CHECKLIST.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nBefore you send money:\n${BEFORE_YOU_SEND.map((c) => `- ${c}`).join("\n")}\n\nCheck any wallet or website for free: ${siteUrl}/#check${whatsapp ? "\n\nYou asked for scam alerts on WhatsApp. We'll only message you with alerts, and you can reply STOP at any time." : ""}\n\nWe only contact you if you ask us to.`,
+      {
+        preheader: "The 7 signs of a crypto scam, and what to do before you send money.",
+        heading: "Your free crypto scam checklist",
+        intro: ["Keep it handy, and share it with the people you look out for."],
+        lists: [
+          { title: "The 7 signs of a crypto scam. If two or more sound familiar, stop sending money:", items: CHECKLIST, ordered: true },
+          { title: "Before you send money:", items: BEFORE_YOU_SEND },
+        ],
+        button: { label: "Check a wallet or website", url: `${siteUrl}/#check` },
+        after: [
+          ...(whatsapp ? ["You asked for scam alerts on WhatsApp. We'll only message you with alerts, and you can reply STOP at any time."] : []),
+          "We only contact you if you ask us to.",
+        ],
       },
     ),
   /** Reminder to someone who started a report on the home or campaign page but hasn't continued. */

@@ -101,9 +101,9 @@ const csvCell = (v: unknown) => {
 export async function exportLeadsCsv(actor: Actor, ip: string) {
   if (!can(actor.role, "exportLeads")) throw new Forbidden();
   const leads = await prisma.lead.findMany({ orderBy: { createdAt: "desc" }, include: { convertedReport: { select: { publicRef: true } } } });
-  const header = ["created_at", "email", "source", "scam_type", "loss_band", "marketing_consent", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid", "landing_page", "converted_report"];
+  const header = ["created_at", "email", "phone", "whatsapp_opt_in", "contact_opt_in", "consent_at", "source", "scam_type", "loss_band", "marketing_consent", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid", "landing_page", "converted_report"];
   const lines = leads.map((l) =>
-    [l.createdAt, decryptText(l.emailEnc, aad.leadEmail()), l.source, l.scamType, l.lossBand, l.marketingConsent, l.utmSource, l.utmMedium, l.utmCampaign, l.utmContent, l.utmTerm, l.gclid, l.fbclid, l.landingPage, l.convertedReport?.publicRef]
+    [l.createdAt, decryptText(l.emailEnc, aad.leadEmail()), l.phoneEnc ? decryptText(l.phoneEnc, aad.leadPhone()) : "", l.whatsappOptIn, l.contactOptIn, l.consentAt, l.source, l.scamType, l.lossBand, l.marketingConsent, l.utmSource, l.utmMedium, l.utmCampaign, l.utmContent, l.utmTerm, l.gclid, l.fbclid, l.landingPage, l.convertedReport?.publicRef]
       .map(csvCell)
       .join(","),
   );

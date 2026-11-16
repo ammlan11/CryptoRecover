@@ -15,6 +15,7 @@ export const aad = {
   issue: () => "issue",
   userEmail: () => "user.email",
   leadEmail: () => "lead.email",
+  leadPhone: () => "lead.phone",
   watchEmail: () => "watch.email",
   userTotp: (userId: string) => `user:${userId}:totp`,
   staffTotp: (staffId: string) => `staff:${staffId}:totp`,
