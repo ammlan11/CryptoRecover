@@ -111,7 +111,7 @@ try {
   // Lead export: owner-only CSV
   const csv = await page.request.get(`${ADMIN}/leads/export`);
   assert.equal(csv.status(), 200);
-  assert.match(await csv.text(), /^created_at,email,source/);
+  assert.match(await csv.text(), /^created_at,email,phone,whatsapp_opt_in,contact_opt_in,consent_at,source/);
   step("owner exported leads as CSV");
 
   // Re-authentication page works with a new code
