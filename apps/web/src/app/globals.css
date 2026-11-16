@@ -107,6 +107,14 @@ img, svg { max-width: 100%; }
 .fine { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-muted); }
 .fine a { color: var(--blue); text-decoration: underline; }
 /* Under the hero form: lighter actions for people who haven't been scammed. */
+.hero-care { margin: 14px 0 0; max-width: 620px; font-size: 18px; font-weight: 500; color: #fff; }
+/* Second path in the hero, for visitors who haven't been scammed. */
+.hero-alt { margin-top: 18px; max-width: 680px; padding: 20px 22px; border: 1px solid var(--line-dark); border-radius: 12px; background: rgba(255, 255, 255, .04); }
+.hero-alt-title { font-size: 17px; font-weight: 600; color: #fff; }
+.hero-alt-sub { margin-top: 4px; font-size: 14.5px; line-height: 1.5; color: var(--on-dark-muted); }
+.hero-alt .inline-form { max-width: none; }
+.hero-alt-check { margin-top: 14px; }
+@media (max-width: 640px) { .hero-alt { padding: 18px 16px; } .hero-alt-check { width: 100%; } }
 .hero-more { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 22px; max-width: 680px; }
 .hero-more-label { width: 100%; color: var(--on-dark-muted); font-size: 14px; }
 .btn-sm { min-height: 44px; padding: 0 16px; font-size: 13px; }

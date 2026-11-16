@@ -124,7 +124,7 @@ export async function startReport(_prev: FormState, form: FormData): Promise<For
     // Same id for the browser pixel and the server-side event, so the lead is counted once.
     const eventId = `lead-${leadId}`;
     const attr = await attribution();
-    await sendLeadConversion({ eventId, email: parsed.data.email, fbclid: attr.fbclid, landing: attr.landing });
+    await sendLeadConversion({ eventId, email: parsed.data.email, fbclid: attr.fbclid, landing: attr.landing, content: "report" });
     return { ...success, eventId };
   } catch (error) {
     console.error("startReport failed", error instanceof Error ? error.message : error);
@@ -208,8 +208,12 @@ export async function subscribeNewsletter(_prev: FormState, form: FormData): Pro
   const parsed = email.safeParse(form.get("email"));
   if (!parsed.success) return { status: "error", message: "Enter a valid email address" };
   try {
-    await saveLead("NEWSLETTER", parsed.data, { marketingConsent: true });
-    return success;
+    const leadId = await saveLead("NEWSLETTER", parsed.data, { marketingConsent: true });
+    // Counted as a lead in Meta/Google too (only where ad tracking is allowed), labelled "newsletter".
+    const eventId = `newsletter-${leadId}`;
+    const attr = await attribution();
+    await sendLeadConversion({ eventId, email: parsed.data, fbclid: attr.fbclid, landing: attr.landing, content: "newsletter" });
+    return { ...success, eventId };
   } catch (error) {
     console.error("subscribeNewsletter failed", error instanceof Error ? error.message : error);
     return { status: "error", message: GENERIC_ERROR };

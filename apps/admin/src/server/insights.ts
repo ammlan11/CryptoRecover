@@ -41,6 +41,31 @@ export async function dashboard(actor: Actor) {
   };
 }
 
+/** Emails sent by the site (type and outcome only), for the dashboard counter. */
+export async function emailStats(actor: Actor) {
+  if (!can(actor.role, "viewLeads")) return null;
+  const now = Date.now();
+  const startOfDay = new Date(new Date().setUTCHours(0, 0, 0, 0));
+  const week = new Date(now - 7 * DAY);
+  const month = new Date(now - 30 * DAY);
+  const [today, last7, last30, total, failed7, byKind] = await Promise.all([
+    prisma.emailSend.count({ where: { ok: true, createdAt: { gte: startOfDay } } }),
+    prisma.emailSend.count({ where: { ok: true, createdAt: { gte: week } } }),
+    prisma.emailSend.count({ where: { ok: true, createdAt: { gte: month } } }),
+    prisma.emailSend.count({ where: { ok: true } }),
+    prisma.emailSend.count({ where: { ok: false, createdAt: { gte: week } } }),
+    prisma.emailSend.groupBy({ by: ["kind"], where: { ok: true, createdAt: { gte: month } }, _count: { _all: true } }),
+  ]);
+  return {
+    today,
+    last7,
+    last30,
+    total,
+    failed7,
+    byKind: byKind.map((r) => ({ key: r.kind, count: r._count._all })).sort((a, b) => b.count - a.count),
+  };
+}
+
 export async function listLeads(actor: Actor, filter: { source?: LeadSource; campaign?: string }) {
   if (!can(actor.role, "viewLeads")) throw new Forbidden();
   return prisma.lead.findMany({

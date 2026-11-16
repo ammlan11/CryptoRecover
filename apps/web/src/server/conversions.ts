@@ -12,7 +12,8 @@ const sha256 = (v: string) => createHash("sha256").update(v.trim().toLowerCase()
  * (or consent mode is "implied"), with the email hashed as Meta requires. Uses the same
  * event id as the browser pixel, so Meta counts the lead once. Never blocks the form.
  */
-export async function sendLeadConversion(input: { eventId: string; email: string; fbclid?: string; landing?: string }) {
+/** `content`: "report" (started a report) or "newsletter" (weekly alert sign-up), to tell them apart in Ads Manager. */
+export async function sendLeadConversion(input: { eventId: string; email: string; fbclid?: string; landing?: string; content?: "report" | "newsletter" }) {
   const token = process.env.META_CAPI_TOKEN;
   if (!token || !META_PIXEL_ID) return;
   const jar = await cookies();
@@ -30,6 +31,7 @@ export async function sendLeadConversion(input: { eventId: string; email: string
         event_id: input.eventId,
         action_source: "website",
         event_source_url: input.landing ? `${site}${input.landing}` : site,
+        custom_data: { content_name: input.content ?? "report" },
         user_data: {
           em: [sha256(input.email)],
           client_ip_address: await clientIp(),

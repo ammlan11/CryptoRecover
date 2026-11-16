@@ -525,3 +525,15 @@ enum ThreatSource {
   METAMASK
   PHISHDESTROY
 }
+
+/// One row per email sent (or failed), for the admin's "Emails sent" counter.
+/// Only the template type and the outcome: never the address or the content.
+model EmailSend {
+  id        BigInt   @id @default(autoincrement())
+  kind      String   @db.VarChar(40)
+  ok        Boolean
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
