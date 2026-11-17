@@ -18,7 +18,7 @@ mkdirSync(SHOTS, { recursive: true });
 
 const PUBLIC = ["/", "/scams", "/scams/pig-butchering", "/privacy", "/terms", "/lp/broker-scams", "/lp/fake-apps", "/lp/report", "/lp/behind-every-scam", "/login", "/signup", "/forgot-password"];
 const ACCOUNT = ["/account/reports", "/account/reports/new", "/account/settings", "/account/settings/two-step", "/account/settings/phone", "/account/issues/new"];
-const ADMIN_PAGES = ["/", "/reports", "/indicators", "/leads", "/issues", "/audit", "/staff", "/account"];
+const ADMIN_PAGES = ["/", "/reports", "/indicators", "/leads", "/emails", "/issues", "/audit", "/staff", "/account"];
 
 function totp(secret, timeMs = Date.now()) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";

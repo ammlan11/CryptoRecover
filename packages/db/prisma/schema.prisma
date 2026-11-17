@@ -531,14 +531,19 @@ enum ThreatSource {
   PHISHDESTROY
 }
 
-/// One row per email sent (or failed), for the admin's "Emails sent" counter.
-/// Only the template type and the outcome: never the address or the content.
+/// One row per email sent (or failed), for the admin's "Emails" log and counter.
+/// The address is encrypted (plus a lookup hash for search); the body is never stored, and
+/// sign-in codes are blanked out of subjects. Rows are deleted after 90 days.
 model EmailSend {
   id        BigInt   @id @default(autoincrement())
   kind      String   @db.VarChar(40)
   ok        Boolean
+  toEnc     String?  @db.Text
+  toHash    String?  @db.Char(64)
+  subject   String?  @db.VarChar(200)
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+  @@index([toHash])
 }
 

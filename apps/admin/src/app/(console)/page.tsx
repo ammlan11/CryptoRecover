@@ -60,13 +60,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <>
           <div className="row" style={{ marginTop: 32 }}>
             <h2 className="title" style={{ fontSize: 22 }}>Emails sent</h2>
-            <span className="hint">All emails the site sends: sign-in codes, report links, reminders and updates</span>
+            <span className="hint">All emails the site sends: sign-in codes, report links, reminders and updates{can(staff.role, "viewReporterEmail") && <> · <Link href="/emails">See every email</Link></>}</span>
           </div>
           <div className="kpis">
             <div className="kpi"><div className="label">Today (UTC)</div><div className="value">{mail.today}</div></div>
             <div className="kpi"><div className="label">Last 7 days</div><div className="value">{mail.last7}</div></div>
             <div className="kpi"><div className="label">Last 30 days</div><div className="value">{mail.last30}</div></div>
-            <div className="kpi"><div className="label">All time</div><div className="value">{mail.total}</div></div>
+            <div className="kpi"><div className="label">Last 90 days</div><div className="value">{mail.total}</div></div>
             <div className={`kpi${mail.failed7 ? " alert" : ""}`}><div className="label">Failed, last 7 days</div><div className="value">{mail.failed7}</div></div>
           </div>
           <section className="card"><h2 className="sub">By type, last 30 days</h2><Bars rows={mail.byKind} labels={EMAIL_KIND} /></section>
