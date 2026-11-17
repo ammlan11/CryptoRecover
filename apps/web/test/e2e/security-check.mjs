@@ -120,7 +120,7 @@ ok("source, config and stored files are not reachable; TRACE disabled");
 // ── Admin: bookmarks, typed URLs and forged cookies never reach a page ──
 {
   const inside = { "x-forwarded-for": "127.0.0.1" };
-  const paths = ["/", "/reports", "/reports?assignee=me", "/reports/DM-ABCDE", "/reports/DM-ABCDE/evidence/x", "/indicators", "/leads", "/leads/export", "/issues", "/audit", "/staff", "/account", "/reauth?next=/staff", "/does-not-exist", "/api/anything"];
+  const paths = ["/", "/reports", "/reports?assignee=me", "/reports/DM-ABCDE", "/reports/DM-ABCDE/evidence/x", "/indicators", "/leads", "/leads/export", "/emails", "/issues", "/audit", "/staff", "/account", "/reauth?next=/staff", "/does-not-exist", "/api/anything"];
   for (const path of paths) {
     for (const [label, cookie] of [["no cookie", null], ["forged cookie", "__Host-staff=forged-session-value-that-is-not-real"]]) {
       const res = await get(`${ADMIN}${path}`, { headers: { ...inside, ...(cookie ? { cookie } : {}) } });

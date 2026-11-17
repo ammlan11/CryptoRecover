@@ -445,12 +445,17 @@ describe("emails sent counter", () => {
   it("counts each email by type, without storing addresses", async () => {
     const before = await prisma.emailSend.count({ where: { kind: "resetPassword" } });
     await accounts.requestPasswordReset("nobody-here@example.com"); // no account: no email
-    await verifiedUser("counted@example.com");
+    const counted = await verifiedUser("counted@example.com");
     await accounts.requestPasswordReset("counted@example.com");
     expect(await prisma.emailSend.count({ where: { kind: "resetPassword", ok: true } })).toBe(before + 1);
     const row = await prisma.emailSend.findFirst({ where: { kind: "resetPassword" }, orderBy: { id: "desc" } });
-    // Only the type, outcome and time are stored: no address or content.
-    expect(Object.keys(row!).sort()).toEqual(["createdAt", "id", "kind", "ok"]);
+    // The address is stored encrypted (never in plain text); sign-in codes never reach the log.
+    expect(row!.toEnc).toBeTruthy();
+    expect(row!.toEnc).not.toContain("counted@example.com");
+    expect(row!.subject).toBe("Reset your password");
+    await loginCodes.sendLoginCode(counted.id, null);
+    const code = await prisma.emailSend.findFirst({ where: { kind: "loginCode" }, orderBy: { id: "desc" } });
+    expect(code!.subject).toMatch(/^•••••• is your Kuro Trace sign-in code$/);
   });
 });
 

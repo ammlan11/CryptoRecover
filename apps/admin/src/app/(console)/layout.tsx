@@ -25,6 +25,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
           {role === "INVESTIGATOR" && <NavLink href="/reports?assignee=me" badge={mine || undefined}>My cases</NavLink>}
           {can(role, "viewIndicators") && <NavLink href="/indicators">Indicators</NavLink>}
           {can(role, "viewLeads") && <NavLink href="/leads">Leads</NavLink>}
+          {can(role, "viewReporterEmail") && <NavLink href="/emails">Emails sent</NavLink>}
           {can(role, "handleIssues") && <NavLink href="/issues">Issues</NavLink>}
           {can(role, "manageStaff") && <NavLink href="/staff">Staff and roles</NavLink>}
           {can(role, "viewAudit") && <NavLink href="/audit">Audit log</NavLink>}

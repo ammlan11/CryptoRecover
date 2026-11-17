@@ -2,6 +2,7 @@ import "server-only";
 import { appendFileSync } from "node:fs";
 import { createTransport, type Transporter } from "nodemailer";
 import { prisma } from "@kurotrace/db";
+import { protectEmail } from "./crypto";
 import { renderEmail, type EmailContent } from "./email-layout";
 import { siteUrl } from "./site";
 
@@ -57,16 +58,29 @@ export async function sendEmail(email: Email): Promise<void> {
   try {
     await deliver(email);
   } catch (error) {
-    await count(email.kind, false);
+    await record(email, false);
     throw error;
   }
-  await count(email.kind, true);
+  await record(email, true);
 }
 
-async function count(kind: string | undefined, ok: boolean) {
+/** Context for the encrypted address and its lookup hash in the email log. */
+export const EMAIL_LOG_CONTEXT = "email.to";
+
+/** Logs the email for the admin: type, outcome, subject (codes blanked) and the encrypted address. */
+async function record(email: Email, ok: boolean) {
   if (!process.env.DATABASE_URL) return;
   try {
-    await prisma.emailSend.create({ data: { kind: (kind ?? "other").slice(0, 40), ok } });
+    let address: { toEnc?: string; toHash?: string } = {};
+    try {
+      const { emailHash, emailEnc } = protectEmail(email.to, EMAIL_LOG_CONTEXT);
+      address = { toEnc: emailEnc, toHash: emailHash };
+    } catch {
+      // Keys not loaded (e.g. a one-off script): still count it, without the address.
+    }
+    // Never keep one-time codes, even in the staff-only log.
+    const subject = email.subject.replace(/\b\d{4,8}\b/g, "••••••").slice(0, 200);
+    await prisma.emailSend.create({ data: { kind: (email.kind ?? "other").slice(0, 40), ok, subject, ...address } });
   } catch (error) {
     // Counting must never stop an email or a sign-in.
     console.error("email counter failed", error instanceof Error ? error.message : error);

@@ -180,6 +180,7 @@ export default function PrivacyPage() {
               <li><strong>Backups:</strong> deleted information disappears from our encrypted backups <strong>within 30 days</strong>, as old backups are replaced.</li>
               <li><strong>Sign-in codes and links</strong> expire within minutes to days and are then useless.</li>
               <li><strong>Details already published</strong> (scam wallets and websites) may stay public because they protect others, but they never identify you.</li>
+              <li><strong>A record of the emails we send you</strong> (your address, the type of email, its subject and date, never its text or any codes) is kept for <strong>90 days</strong>, so our team can check that important emails arrived.</li>
               <li><strong>Security and audit logs</strong> are kept as long as needed to protect the service and investigate abuse.</li>
             </ul>
           ),
