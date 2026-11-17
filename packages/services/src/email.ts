@@ -1,6 +1,7 @@
 import "server-only";
 import { appendFileSync } from "node:fs";
 import { createTransport, type Transporter } from "nodemailer";
+import { prisma } from "@kurotrace/db";
 import { renderEmail, type EmailContent } from "./email-layout";
 import { siteUrl } from "./site";
 
@@ -21,6 +22,8 @@ export interface Email {
   text: string;
   /** Branded version shown by mail apps that support HTML. */
   html?: string;
+  /** Which template this is, for the "emails sent" counter (no addresses are stored). */
+  kind?: string;
 }
 
 export const outbox: Email[] = [];
@@ -46,7 +49,31 @@ function smtp(): Transporter {
   return transport;
 }
 
+/**
+ * Sends one email and counts it (type and success only: never the address or content),
+ * for the "Emails sent" panel in the admin.
+ */
 export async function sendEmail(email: Email): Promise<void> {
+  try {
+    await deliver(email);
+  } catch (error) {
+    await count(email.kind, false);
+    throw error;
+  }
+  await count(email.kind, true);
+}
+
+async function count(kind: string | undefined, ok: boolean) {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await prisma.emailSend.create({ data: { kind: (kind ?? "other").slice(0, 40), ok } });
+  } catch (error) {
+    // Counting must never stop an email or a sign-in.
+    console.error("email counter failed", error instanceof Error ? error.message : error);
+  }
+}
+
+async function deliver(email: Email): Promise<void> {
   const provider = process.env.EMAIL_PROVIDER ?? (process.env.NODE_ENV === "production" ? "postmark" : "log");
   if (provider === "memory") {
     outbox.push(email);
@@ -90,9 +117,25 @@ const footer = `\n\n—\nKuro Trace never asks for payment, a "recovery fee" or 
 const notYou = "If this wasn't you, reset your password now.";
 
 /** One email: the plain-text version plus the same content in the branded HTML layout. */
-function mail(subject: string, text: string, content: EmailContent): Omit<Email, "to"> {
-  return { subject, text: `${text}${footer}`, html: renderEmail(content, siteUrl) };
+function mail(kind: string, subject: string, text: string, content: EmailContent): Omit<Email, "to"> {
+  return { kind, subject, text: `${text}${footer}`, html: renderEmail(content, siteUrl) };
 }
+
+const CHECKLIST = [
+  "A stranger starts the conversation",
+  "The returns sound effortless",
+  "You're told to decide today",
+  "The platform is on no regulator's list",
+  "Withdrawing needs a new payment",
+  "They ask you to keep it from your bank",
+  "Anyone wants your seed phrase",
+];
+const BEFORE_YOU_SEND = [
+  "Look the platform up on your financial regulator's register.",
+  "Paste the wallet or website into a scam checker.",
+  "Talk to someone you trust before you pay.",
+  "Never share your seed phrase or private keys, with anyone.",
+];
 
 const resetButton = { label: "Reset my password", url: `${siteUrl}/forgot-password` };
 const reportButton = (ref: string) => ({ label: "Open my report", url: `${siteUrl}/account/reports/${ref}` });
@@ -101,6 +144,7 @@ export const templates = {
   /** Sent when someone joins: welcome + confirm the address. */
   verifyEmail: (link: string) =>
     mail(
+      "verifyEmail",
       "Welcome to Kuro Trace: confirm your email",
       `Welcome to Kuro Trace, and thank you for joining.\n\nWe collect reports of crypto scams so our researchers can work out how they operate, and we publish warnings so fewer people fall for them. Your reports are encrypted and never shown with your name.\n\nConfirm your email address to finish setting up your account:\n\n${link}\n\nThe link works for 24 hours. If you didn't sign up, ignore this email.`,
       {
@@ -116,6 +160,7 @@ export const templates = {
     ),
   alreadyRegistered: (loginLink: string, resetLink: string) =>
     mail(
+      "alreadyRegistered",
       "You already have a Kuro Trace account",
       `Someone tried to create an account with this email, but you already have one.\n\nLog in: ${loginLink}\nForgot your password? ${resetLink}\n\nIf this wasn't you, you can ignore this email.`,
       {
@@ -128,6 +173,7 @@ export const templates = {
     ),
   resetPassword: (link: string) =>
     mail(
+      "resetPassword",
       "Reset your password",
       `Use this link to choose a new password:\n\n${link}\n\nThe link works for 1 hour and only once. If you didn't ask for this, ignore this email; your password stays the same.`,
       {
@@ -143,19 +189,45 @@ export const templates = {
     ),
   continueReport: (link: string) =>
     mail(
+      "continueReport",
       "Finish your scam report",
-      `Thank you for starting a report. Use this secure link to finish it; it takes about 5 minutes:\n\n${link}\n\nThe link works for 7 days. Your report is encrypted and never published with your name.`,
+      `Thank you for starting a report. Use this secure link to create your free account and finish it; it takes about 5 minutes:\n\n${link}\n\nThe link works for 7 days. Your report is encrypted and never published with your name.`,
       {
-        preheader: "Pick up where you left off. About 5 minutes.",
+        preheader: "Create your free account and finish your report. About 5 minutes.",
         heading: "Finish your scam report",
-        intro: ["Thank you for starting a report. Use this secure link to finish it; it takes about 5 minutes."],
-        button: { label: "Continue my report", url: link },
+        intro: [
+          "Thank you for starting a report.",
+          "The secure link below takes you to create your free account (just a password and your mobile number) and then to your report. It takes about 5 minutes.",
+        ],
+        button: { label: "Create account and continue", url: link },
         after: ["The link works for 7 days. Your report is encrypted and never published with your name."],
+      },
+    ),
+  /** "Keep me protected" on the ad landing pages: the free checklist they asked for. */
+  protectChecklist: (whatsapp: boolean) =>
+    mail(
+      "protectChecklist",
+      "Your free crypto scam checklist",
+      `Here is your free checklist. Keep it handy, and share it with the people you look out for.\n\nThe 7 signs of a crypto scam. If two or more sound familiar, stop sending money:\n${CHECKLIST.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nBefore you send money:\n${BEFORE_YOU_SEND.map((c) => `- ${c}`).join("\n")}\n\nCheck any wallet or website for free: ${siteUrl}/#check${whatsapp ? "\n\nYou asked for scam alerts on WhatsApp. We'll only message you with alerts, and you can reply STOP at any time." : ""}\n\nWe only contact you if you ask us to.`,
+      {
+        preheader: "The 7 signs of a crypto scam, and what to do before you send money.",
+        heading: "Your free crypto scam checklist",
+        intro: ["Keep it handy, and share it with the people you look out for."],
+        lists: [
+          { title: "The 7 signs of a crypto scam. If two or more sound familiar, stop sending money:", items: CHECKLIST, ordered: true },
+          { title: "Before you send money:", items: BEFORE_YOU_SEND },
+        ],
+        button: { label: "Check a wallet or website", url: `${siteUrl}/#check` },
+        after: [
+          ...(whatsapp ? ["You asked for scam alerts on WhatsApp. We'll only message you with alerts, and you can reply STOP at any time."] : []),
+          "We only contact you if you ask us to.",
+        ],
       },
     ),
   /** Reminder to someone who started a report on the home or campaign page but hasn't continued. */
   reminderContinue: (link: string, final: boolean) =>
     mail(
+      "reminderContinue",
       final ? "Last reminder: your scam report is waiting" : "Your scam report is waiting",
       `You started a scam report on Kuro Trace but haven't finished it yet. It takes about 5 minutes, and every report helps us find the people behind these scams and warn others.\n\nPick up where you left off:\n\n${link}\n\nThe link works for 7 days.${final ? " This is the last reminder we'll send." : " We'll remind you once more, then stop."} Changed your mind? Just ignore this email.`,
       {
@@ -175,6 +247,7 @@ export const templates = {
   /** Reminder to an account holder with an unsent draft. */
   reminderDraft: (ref: string, final: boolean) =>
     mail(
+      "reminderDraft",
       final ? `Last reminder: report ${ref} isn't sent yet` : `Report ${ref} isn't sent yet`,
       `Your report ${ref} is saved as a draft, but it hasn't been sent to our research team yet. Nothing reaches them until you press "Send report".\n\nFinish it here: ${siteUrl}/account/reports/${ref}/edit\n\n${final ? "This is the last reminder we'll send about it." : "We'll remind you once more, then stop."}`,
       {
@@ -190,6 +263,7 @@ export const templates = {
     ),
   passwordChanged: () =>
     mail(
+      "passwordChanged",
       "Your password was changed",
       `The password on your Kuro Trace account was just changed and other devices were signed out.\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password`,
       {
@@ -202,6 +276,7 @@ export const templates = {
     ),
   twoStepChanged: (enabled: boolean) =>
     mail(
+      "twoStepChanged",
       enabled ? "Two-step sign-in is on" : "Two-step sign-in was turned off",
       `${enabled ? "Two-step sign-in is now on for your Kuro Trace account." : "Two-step sign-in was turned off on your Kuro Trace account."}\n\nIf this wasn't you, reset your password now: ${siteUrl}/forgot-password`,
       {
@@ -214,6 +289,7 @@ export const templates = {
     ),
   phoneChanged: (masked: string, resetLink: string) =>
     mail(
+      "phoneChanged",
       "Your mobile number was changed",
       `The mobile number on your Kuro Trace account was changed to ${masked}.\n\nIf this wasn't you, reset your password now: ${resetLink}`,
       {
@@ -226,6 +302,7 @@ export const templates = {
     ),
   loginCode: (code: string, minutes: number) =>
     mail(
+      "loginCode",
       `${code} is your Kuro Trace sign-in code`,
       `Your sign-in code is:\n\n    ${code}\n\nIt works once, for ${minutes} minutes. Never share it: Kuro Trace will never ask you for this code by phone, chat or email.\n\nIf you didn't just try to log in, someone has your password. Reset it now: ${siteUrl}/forgot-password`,
       {
@@ -242,6 +319,7 @@ export const templates = {
   /** Staff replies: the content stays inside the account, never in the email. */
   newMessage: (ref: string) =>
     mail(
+      "newMessage",
       `New message about report ${ref}`,
       `Our research team sent you a message about report ${ref}. Log in to read it:\n\n${siteUrl}/account/reports/${ref}`,
       {
@@ -253,6 +331,7 @@ export const templates = {
     ),
   infoNeeded: (ref: string) =>
     mail(
+      "infoNeeded",
       `We have a question about report ${ref}`,
       `Our research team needs a little more detail on report ${ref}. Log in to see the question:\n\n${siteUrl}/account/reports/${ref}`,
       {
@@ -264,6 +343,7 @@ export const templates = {
     ),
   reportClosed: (ref: string) =>
     mail(
+      "reportClosed",
       `Report ${ref} is closed`,
       `Thank you for report ${ref}. Our team has finished reviewing it, and what it showed now helps warn others. You can still read it in your account:\n\n${siteUrl}/account/reports/${ref}`,
       {
@@ -275,6 +355,7 @@ export const templates = {
     ),
   reportReceived: (ref: string) =>
     mail(
+      "reportReceived",
       `Report ${ref} received`,
       `Thank you. We received report ${ref}. Our research team reads every report, and we'll message you in your account if we have a question.\n\n${siteUrl}/account/reports/${ref}`,
       {

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { can } from "@/lib/permissions";
-import { LOSS, SCAM, SOURCE } from "@/lib/labels";
+import { EMAIL_KIND, LOSS, SCAM, SOURCE } from "@/lib/labels";
 import { requireStaff } from "@/lib/session";
-import { dashboard } from "@/server/insights";
+import { dashboard, emailStats } from "@/server/insights";
 
 export const metadata = { title: "Dashboard" };
 
@@ -24,7 +24,7 @@ function Bars({ rows, labels }: { rows: { key: string; count: number }[]; labels
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const { staff } = await requireStaff();
-  const d = await dashboard(staff);
+  const [d, mail] = await Promise.all([dashboard(staff), emailStats(staff)]);
   const { denied } = await searchParams;
   const queue = can(staff.role, "viewQueue");
   const rate = d.leads30 ? Math.round((d.converted30 / d.leads30) * 100) : 0;
@@ -56,6 +56,22 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <section className="card"><h2 className="sub">Reported losses</h2><Bars rows={d.byLoss} labels={LOSS} /></section>
         {can(staff.role, "viewLeads") && <section className="card"><h2 className="sub">Leads by source</h2><Bars rows={d.bySource} labels={SOURCE} /></section>}
       </div>
+      {mail && (
+        <>
+          <div className="row" style={{ marginTop: 32 }}>
+            <h2 className="title" style={{ fontSize: 22 }}>Emails sent</h2>
+            <span className="hint">All emails the site sends: sign-in codes, report links, reminders and updates</span>
+          </div>
+          <div className="kpis">
+            <div className="kpi"><div className="label">Today (UTC)</div><div className="value">{mail.today}</div></div>
+            <div className="kpi"><div className="label">Last 7 days</div><div className="value">{mail.last7}</div></div>
+            <div className="kpi"><div className="label">Last 30 days</div><div className="value">{mail.last30}</div></div>
+            <div className="kpi"><div className="label">All time</div><div className="value">{mail.total}</div></div>
+            <div className={`kpi${mail.failed7 ? " alert" : ""}`}><div className="label">Failed, last 7 days</div><div className="value">{mail.failed7}</div></div>
+          </div>
+          <section className="card"><h2 className="sub">By type, last 30 days</h2><Bars rows={mail.byKind} labels={EMAIL_KIND} /></section>
+        </>
+      )}
     </>
   );
 }

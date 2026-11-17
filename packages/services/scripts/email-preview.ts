@@ -15,6 +15,7 @@ const samples = {
   "reset-password": templates.resetPassword(`${site}/reset-password?token=sample`),
   "sign-in-code": templates.loginCode("483920", 10),
   "already-registered": templates.alreadyRegistered(`${site}/login`, `${site}/forgot-password`),
+  "protect-checklist": templates.protectChecklist(true),
   "continue-report": templates.continueReport(`${site}/continue?token=sample`),
   "reminder-continue-1": templates.reminderContinue(`${site}/continue?token=sample`, false),
   "reminder-continue-2": templates.reminderContinue(`${site}/continue?token=sample`, true),

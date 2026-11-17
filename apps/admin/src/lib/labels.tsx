@@ -32,6 +32,7 @@ export const SOURCE: Record<string, string> = {
   CAMPAIGN_FORM: "Ad landing page",
   CHECKER_WATCH: "Checker watch-list",
   NEWSLETTER: "Weekly alert",
+  LP_PROTECT: "Keep me protected (ad page)",
 };
 
 export const fmt = (d: Date | null | undefined) =>
@@ -42,3 +43,24 @@ export function Pill({ status }: { status: string }) {
   const s = STATUS[status] ?? { label: status, tone: "neutral" };
   return <span className={`pill pill-${s.tone}`}>{s.label}</span>;
 }
+
+/** Email types for the "Emails sent" counter. */
+export const EMAIL_KIND: Record<string, string> = {
+  verifyEmail: "Welcome / confirm email",
+  alreadyRegistered: "Already registered",
+  resetPassword: "Password reset",
+  continueReport: "Finish-your-report link",
+  reminderContinue: "Reminder: report waiting",
+  reminderDraft: "Reminder: draft not sent",
+  passwordChanged: "Password changed",
+  twoStepChanged: "Two-step changed",
+  phoneChanged: "Mobile number changed",
+  loginCode: "Sign-in code",
+  newMessage: "New message",
+  infoNeeded: "Question from the team",
+  reportClosed: "Report closed",
+  reportReceived: "Report received",
+  protectChecklist: "Free checklist (ad page)",
+  other: "Other",
+};
+

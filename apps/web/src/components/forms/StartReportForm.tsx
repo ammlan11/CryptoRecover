@@ -5,12 +5,22 @@ import { useActionState, useEffect } from "react";
 import { startReport, type FormState } from "@/app/actions";
 import { BotCheck } from "@/components/forms/BotCheck";
 import { announceLead } from "@/components/ads/AdTags";
+import { PhoneField } from "@/components/auth/PhoneField";
 import { LOSS_BAND_OPTIONS, SCAM_TYPE_OPTIONS, type ScamTypeValue } from "@/lib/options";
 
 const initial: FormState = { status: "idle" };
 
 /** First step of a report. Hero variant = one row; campaign variant = stacked with loss band and consent. */
-export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { variant: "hero" | "campaign"; defaultScamType?: ScamTypeValue }) {
+export function StartReportForm({
+  variant,
+  defaultScamType = "UNSURE",
+  phoneCountry = "AE",
+}: {
+  variant: "hero" | "campaign";
+  defaultScamType?: ScamTypeValue;
+  /** Campaign variant: default country for the optional mobile number. */
+  phoneCountry?: string;
+}) {
   const [state, action, pending] = useActionState(startReport, initial);
   const id = variant;
   const eventId = state.status === "success" ? state.eventId : undefined;
@@ -100,6 +110,11 @@ export function StartReportForm({ variant, defaultScamType = "UNSURE" }: { varia
         <label className="label" htmlFor="lp-email">Email for your reply</label>
         <input id="lp-email" name="email" type="email" autoComplete="email" required placeholder="you@email.com" className="field" aria-invalid={error?.field === "email" || undefined} />
       </div>
+      <PhoneField label="Mobile number (optional)" required={false} compact idPrefix="lp-report-" defaultCountry={phoneCountry} help={null} />
+      <label className="check" style={{ fontSize: 13.5 }}>
+        <input type="checkbox" name="contactOptIn" />
+        <span>Our research team may contact me about my report</span>
+      </label>
       <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--ink-muted)", lineHeight: 1.45 }}>
         <input type="checkbox" name="consent" style={{ width: 18, height: 18, margin: 0, flex: "none" }} aria-invalid={error?.field === "consent" || undefined} />
         <span>

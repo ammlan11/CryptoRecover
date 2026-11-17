@@ -55,6 +55,7 @@ export default function PrivacyPage() {
               <h3>Information you give us</h3>
               <ul>
                 <li><strong>Account details:</strong> your email address, mobile number and password. Your password is stored only as a secure scrambled value (a hash) that nobody can read, including us.</li>
+                <li><strong>Sign-up forms on our campaign pages:</strong> your email address and, <strong>only if you choose to give it, your mobile number</strong>, plus the boxes you ticked (scam alerts on WhatsApp, or our research team contacting you about your report). Your mobile number is encrypted before it is stored.</li>
                 <li><strong>Your report:</strong> what happened, the type of scam, how you were contacted, your country, roughly how much was lost, the payments you made, and the wallets, websites, apps and social handles the scammer used.</li>
                 <li><strong>Evidence files</strong> you choose to upload, such as screenshots and chat exports. Every file is checked for viruses before our team can open it.</li>
                 <li><strong>Messages</strong> between you and our research team about your report.</li>
@@ -87,6 +88,7 @@ export default function PrivacyPage() {
                     <tr><td>Study your report to understand how the scam works, and share it with our investigation partner</td><td><strong>Your consent</strong>, which you give when you submit a report</td></tr>
                     <tr><td>Publish the scammer&rsquo;s wallets, websites and handles in warnings and the wallet checker</td><td><strong>Your consent</strong>, a separate choice on each report</td></tr>
                     <tr><td>Contact you about your report, for example with a question from our team</td><td><strong>Contract</strong> and our <strong>legitimate interest</strong> in accurate research</td></tr>
+                    <tr><td>Send the free checklist you asked for; send scam alerts on WhatsApp, or contact you about your report by phone, <strong>only if you ticked that box</strong></td><td><strong>Your consent</strong></td></tr>
                     <tr><td>Keep the site secure, prevent fraud, spam and abuse</td><td><strong>Legitimate interests</strong></td></tr>
                     <tr><td>Measure which adverts work</td><td><strong>Your consent</strong> (cookie banner on campaign pages)</td></tr>
                     <tr><td>Comply with the law or a valid request from the authorities</td><td><strong>Legal obligation</strong></td></tr>
@@ -96,6 +98,24 @@ export default function PrivacyPage() {
               <p>
                 Some reports reveal sensitive details about your life. <strong>Only share what is needed to describe the scam.</strong> Where a report includes special
                 category information, we rely on your <strong>explicit consent</strong> and use it only for the research you agreed to.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: "phone",
+          title: "Your mobile number on our campaign pages",
+          body: (
+            <>
+              <p>
+                On our campaign pages the mobile number is <strong>optional</strong>. If you give it, <strong>we only use it for what you ticked</strong>: scam alerts on
+                WhatsApp, or our research team contacting you about your report. <strong>We only contact you if you ask us to.</strong> We never use it for sales calls and
+                never pass it to anyone else for marketing.
+              </p>
+              <p>
+                <strong>To stop:</strong> reply <strong>STOP</strong> to any WhatsApp alert, or email <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a> and we&rsquo;ll stop
+                using your number. <strong>To have your number and details deleted</strong>, email us from the same address you signed up with; we delete them within one month,
+                and from our backups within a further 30 days.
               </p>
             </>
           ),

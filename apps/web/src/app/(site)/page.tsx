@@ -59,12 +59,14 @@ export default function HomePage() {
             Tell us how the scam reached you. Private investigators study every report to work out how it operates, and we publish
             warnings so fewer people fall for it. Never shown with your name.
           </p>
+          <p className="hero-care">No one who&rsquo;s been scammed should feel alone. It&rsquo;s never their fault.</p>
           <StartReportForm variant="hero" />
           <FocusStartForm />
-          <div className="hero-more" aria-label="Other ways to use Kuro Trace">
-            <span className="hero-more-label">Not been scammed? Stay a step ahead:</span>
-            <a href="#check" className="btn btn-line-w btn-sm">Check a website or wallet</a>
-            <a href="#alerts" className="btn btn-line-w btn-sm">Get the weekly scam alert</a>
+          <div className="hero-alt" aria-label="Not been scammed? Stay a step ahead">
+            <div className="hero-alt-title">Not been scammed? Stay a step ahead.</div>
+            <div className="hero-alt-sub">Get the weekly scam alert: new fake platforms and the scripts scammers use, in one short email.</div>
+            <NewsletterForm id="hero-alert-email" compact />
+            <a href="#check" className="btn btn-line-w btn-sm hero-alt-check">Check a website or wallet →</a>
           </div>
           <div className="hero-more">
             <span className="hero-more-label">Want to set up your account first?</span>

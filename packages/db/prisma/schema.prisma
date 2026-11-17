@@ -372,6 +372,10 @@ model Lead {
   gclid            String?    @db.VarChar(255)
   fbclid           String?    @db.VarChar(255)
   marketingConsent Boolean    @default(false)
+  phoneEnc         String?    @db.Text // optional mobile (E.164), encrypted
+  whatsappOptIn    Boolean    @default(false) // asked for scam alerts on WhatsApp
+  contactOptIn     Boolean    @default(false) // research team may contact them about their report
+  consentAt        DateTime? // when they last gave any of the consents above
   convertedReportId String?   @unique
   remindersSent    Int        @default(0) // "finish your report" reminders sent (max 2)
   lastReminderAt   DateTime?
@@ -389,6 +393,7 @@ enum LeadSource {
   CAMPAIGN_FORM
   CHECKER_WATCH
   NEWSLETTER
+  LP_PROTECT // "Keep me protected" on the ad landing pages
 }
 
 // ─── Staff (admin terminal) ────────────────────────────────────
@@ -525,3 +530,15 @@ enum ThreatSource {
   METAMASK
   PHISHDESTROY
 }
+
+/// One row per email sent (or failed), for the admin's "Emails sent" counter.
+/// Only the template type and the outcome: never the address or the content.
+model EmailSend {
+  id        BigInt   @id @default(autoincrement())
+  kind      String   @db.VarChar(40)
+  ok        Boolean
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+

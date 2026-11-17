@@ -41,6 +41,31 @@ export async function dashboard(actor: Actor) {
   };
 }
 
+/** Emails sent by the site (type and outcome only), for the dashboard counter. */
+export async function emailStats(actor: Actor) {
+  if (!can(actor.role, "viewLeads")) return null;
+  const now = Date.now();
+  const startOfDay = new Date(new Date().setUTCHours(0, 0, 0, 0));
+  const week = new Date(now - 7 * DAY);
+  const month = new Date(now - 30 * DAY);
+  const [today, last7, last30, total, failed7, byKind] = await Promise.all([
+    prisma.emailSend.count({ where: { ok: true, createdAt: { gte: startOfDay } } }),
+    prisma.emailSend.count({ where: { ok: true, createdAt: { gte: week } } }),
+    prisma.emailSend.count({ where: { ok: true, createdAt: { gte: month } } }),
+    prisma.emailSend.count({ where: { ok: true } }),
+    prisma.emailSend.count({ where: { ok: false, createdAt: { gte: week } } }),
+    prisma.emailSend.groupBy({ by: ["kind"], where: { ok: true, createdAt: { gte: month } }, _count: { _all: true } }),
+  ]);
+  return {
+    today,
+    last7,
+    last30,
+    total,
+    failed7,
+    byKind: byKind.map((r) => ({ key: r.kind, count: r._count._all })).sort((a, b) => b.count - a.count),
+  };
+}
+
 export async function listLeads(actor: Actor, filter: { source?: LeadSource; campaign?: string }) {
   if (!can(actor.role, "viewLeads")) throw new Forbidden();
   return prisma.lead.findMany({
@@ -76,9 +101,9 @@ const csvCell = (v: unknown) => {
 export async function exportLeadsCsv(actor: Actor, ip: string) {
   if (!can(actor.role, "exportLeads")) throw new Forbidden();
   const leads = await prisma.lead.findMany({ orderBy: { createdAt: "desc" }, include: { convertedReport: { select: { publicRef: true } } } });
-  const header = ["created_at", "email", "source", "scam_type", "loss_band", "marketing_consent", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid", "landing_page", "converted_report"];
+  const header = ["created_at", "email", "phone", "whatsapp_opt_in", "contact_opt_in", "consent_at", "source", "scam_type", "loss_band", "marketing_consent", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid", "landing_page", "converted_report"];
   const lines = leads.map((l) =>
-    [l.createdAt, decryptText(l.emailEnc, aad.leadEmail()), l.source, l.scamType, l.lossBand, l.marketingConsent, l.utmSource, l.utmMedium, l.utmCampaign, l.utmContent, l.utmTerm, l.gclid, l.fbclid, l.landingPage, l.convertedReport?.publicRef]
+    [l.createdAt, decryptText(l.emailEnc, aad.leadEmail()), l.phoneEnc ? decryptText(l.phoneEnc, aad.leadPhone()) : "", l.whatsappOptIn, l.contactOptIn, l.consentAt, l.source, l.scamType, l.lossBand, l.marketingConsent, l.utmSource, l.utmMedium, l.utmCampaign, l.utmContent, l.utmTerm, l.gclid, l.fbclid, l.landingPage, l.convertedReport?.publicRef]
       .map(csvCell)
       .join(","),
   );

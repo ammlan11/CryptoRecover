@@ -5,7 +5,7 @@ export const OPERATOR = {
   name: "Kuro Trace",
   address: "Flaxhome, 8 Broadway, Duffield, Derbyshire, England, DE56 4BT",
   email: "wesupport@kurotrace.com",
-  updated: "12 November 2026",
+  updated: "16 November 2026",
 };
 
 /** Layout for the privacy policy and terms: title, date, "key points" box, numbered sections, contents. */

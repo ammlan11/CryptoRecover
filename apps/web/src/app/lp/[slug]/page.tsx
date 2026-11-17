@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SmallOrb } from "@/components/Orb";
 import { Logo } from "@/components/Logo";
-import { StartReportForm } from "@/components/forms/StartReportForm";
+import { LeadCard } from "@/components/forms/LeadCard";
 import { AdTags } from "@/components/ads/AdTags";
 import { CAMPAIGNS, getCampaign } from "@/content/campaigns";
 import { OPERATOR } from "@/components/legal/Legal";
@@ -63,16 +63,14 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
               <li style={{ display: "flex", gap: 12, alignItems: "center" }}><Check />We never ask for money or your seed phrase</li>
             </ul>
           </div>
-          <div style={{ position: "relative", flex: "1 1 400px", minWidth: 0, background: "#fff", color: "var(--ink)", borderRadius: 12, padding: 32 }}>
-            <div className="card-tag">Step 1 of 3</div>
-            <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: "-.02em", margin: "6px 0 16px" }}>Share how the scam worked</div>
-            <StartReportForm variant="campaign" defaultScamType={campaign.defaultScamType} />
+          <div style={{ position: "relative", flex: "1 1 400px", minWidth: 0 }}>
+            <LeadCard defaultScamType={campaign.defaultScamType} />
           </div>
         </section>
 
         <section className="light section" style={{ padding: "80px 0" }}>
           <div className="wrap">
-            <h2 className="h2" style={{ fontSize: "clamp(30px, 3.4vw, 46px)", marginBottom: 32 }}>Sound familiar?</h2>
+            <h2 className="h2" style={{ fontSize: "clamp(30px, 3.4vw, 46px)", marginBottom: 32 }}>{campaign.quotesTitle ?? "Sound familiar?"}</h2>
             <div className="grid-cards" style={{ marginTop: 0 }}>
               {campaign.quotes.map((q) => (
                 <blockquote key={q} className="card" style={{ margin: 0, fontSize: 18, lineHeight: 1.5 }}>&ldquo;{q}&rdquo;</blockquote>

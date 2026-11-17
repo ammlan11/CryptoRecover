@@ -175,6 +175,39 @@ try {
   await page.waitForURL("**/account/reports");
   step("or with an authenticator app code instead");
 
+  // Ad landing page: "Keep me protected" is the default tab; email + optional mobile + WhatsApp opt-in
+  {
+    const lp = await (await browser.newContext()).newPage();
+    await lp.goto(`${BASE}/lp/behind-every-scam?utm_source=meta&utm_campaign=e2e`);
+    await lp.getByText("How can we help?").waitFor();
+    assert.equal(await lp.getAttribute("#tab-protect", "aria-selected"), "true");
+    assert.equal(await lp.inputValue("#protect-phoneCountry"), "AE");
+    assert.ok(await lp.isDisabled("#panel-protect input[name=whatsappOptIn]"), "WhatsApp box stays off until a number is entered");
+    const protectEmail = `protect-${Date.now()}@example.com`;
+    await lp.fill("#protect-email", protectEmail);
+    await lp.fill("#protect-phone", "12");
+    await lp.click("button:has-text('Send me the free checklist')");
+    await lp.getByText("doesn't look like a valid number").waitFor();
+    await lp.fill("#protect-email", protectEmail);
+    await lp.fill("#protect-phone", "050 123 4567");
+    await lp.check("#panel-protect input[name=whatsappOptIn]");
+    await lp.click("button:has-text('Send me the free checklist')");
+    await lp.getByText("Your free checklist is on its way").waitFor();
+    // LEAD is a reserved word in MySQL 8; \` reaches the shell as an escaped backtick.
+    const LEAD = "\\`Lead\\`";
+    const row = sql(`SELECT source, whatsappOptIn, phoneEnc IS NOT NULL, consentAt IS NOT NULL, utmCampaign FROM ${LEAD} ORDER BY createdAt DESC LIMIT 1`).split(/\s+/);
+    assert.deepEqual(row, ["LP_PROTECT", "1", "1", "1", "e2e"]);
+    assert.ok(!sql(`SELECT phoneEnc FROM ${LEAD} WHERE source='LP_PROTECT' ORDER BY createdAt DESC LIMIT 1`).includes("501234567"), "phone must be encrypted");
+    const mails = readFileSync(MAIL_FILE, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.ok(mails.some((m) => m.to === protectEmail && m.subject === "Your free crypto scam checklist"), "checklist email sent");
+    // The other tab is the first step of a report, with its own optional phone and contact opt-in.
+    await lp.goto(`${BASE}/lp/behind-every-scam`);
+    await lp.click("#tab-report");
+    await lp.locator("#panel-report input[name=contactOptIn]").waitFor();
+    await lp.close();
+    step("ad landing page: protect sign-up (phone encrypted, opt-ins stored, checklist sent) and report tab");
+  }
+
   // Logged-out users can't see account pages
   const fresh = await (await browser.newContext()).newPage();
   await fresh.goto(`${BASE}/account/reports/${ref}`);

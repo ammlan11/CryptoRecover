@@ -65,9 +65,10 @@ function loadTags() {
 
 /** Sends a "Lead" conversion. The event id matches the server-side event, so Meta counts it once. */
 function trackLead(eventId: string) {
-  window.fbq?.("track", "Lead", {}, { eventID: eventId });
+  const content = eventId.split("-")[0] === "lead" ? "report" : eventId.split("-")[0];
+  window.fbq?.("track", "Lead", { content_name: content }, { eventID: eventId });
   if (window.gtag) {
-    window.gtag("event", "generate_lead", { transaction_id: eventId });
+    window.gtag("event", "generate_lead", { transaction_id: eventId, lead_type: content });
     if (GOOGLE_LEAD_SEND_TO) window.gtag("event", "conversion", { send_to: GOOGLE_LEAD_SEND_TO, transaction_id: eventId });
   }
 }

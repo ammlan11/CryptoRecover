@@ -441,3 +441,16 @@ describe("finish-your-report reminders", () => {
   });
 });
 
+describe("emails sent counter", () => {
+  it("counts each email by type, without storing addresses", async () => {
+    const before = await prisma.emailSend.count({ where: { kind: "resetPassword" } });
+    await accounts.requestPasswordReset("nobody-here@example.com"); // no account: no email
+    await verifiedUser("counted@example.com");
+    await accounts.requestPasswordReset("counted@example.com");
+    expect(await prisma.emailSend.count({ where: { kind: "resetPassword", ok: true } })).toBe(before + 1);
+    const row = await prisma.emailSend.findFirst({ where: { kind: "resetPassword" }, orderBy: { id: "desc" } });
+    // Only the type, outcome and time are stored: no address or content.
+    expect(Object.keys(row!).sort()).toEqual(["createdAt", "id", "kind", "ok"]);
+  });
+});
+

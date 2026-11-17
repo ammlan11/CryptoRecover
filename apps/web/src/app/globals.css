@@ -70,6 +70,25 @@ img, svg { max-width: 100%; }
 /* Country + mobile number */
 .phone-field select.field { padding-right: 32px; text-overflow: ellipsis; }
 .phone-input { display: flex; align-items: stretch; }
+.phone-compact { display: flex; gap: 8px; }
+.phone-compact select.field { flex: 0 0 136px; width: 136px; padding: 0 24px 0 10px; text-overflow: ellipsis; }
+.phone-compact input.field { flex: 1 1 auto; min-width: 0; }
+.check.disabled { color: var(--ink-muted); }
+.check.disabled input { opacity: .5; }
+/* Ad landing pages: "How can we help?" card. Mobile first: fits one phone screen. */
+.lead-card { background: #fff; color: var(--ink); border-radius: 12px; padding: 28px; }
+.lead-card-title { margin: 0 0 14px; font-size: 26px; font-weight: 500; letter-spacing: -.02em; }
+.lead-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 18px; background: #eef1f8; border-radius: 10px; }
+.lead-tab { min-height: 44px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--ink-muted); font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.lead-tab.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(2, 11, 51, .15); }
+.lead-tab:focus-visible { outline: 3px solid var(--cyan); }
+.lead-form { display: grid; gap: 14px; }
+@media (max-width: 640px) {
+  .lead-card { padding: 20px 16px; }
+  .lead-card-title { font-size: 22px; margin-bottom: 12px; }
+  .lead-tabs { margin-bottom: 14px; }
+  .lead-form { gap: 12px; }
+}
 .phone-prefix { display: inline-flex; align-items: center; justify-content: center; min-width: 64px; padding: 0 12px; border: 1.5px solid #9aa3c0; border-right: 0; border-radius: 6px 0 0 6px; background: var(--paper); color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .phone-input .field { border-radius: 0 6px 6px 0; min-width: 0; }
 .field-dark { width: 100%; min-height: 52px; border-radius: 6px; border: 1px solid var(--line-input); background: var(--navy-800); color: #fff; padding: 0 16px; font-size: 16px; font-family: inherit; }
@@ -107,6 +126,14 @@ img, svg { max-width: 100%; }
 .fine { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-muted); }
 .fine a { color: var(--blue); text-decoration: underline; }
 /* Under the hero form: lighter actions for people who haven't been scammed. */
+.hero-care { margin: 14px 0 0; max-width: 620px; font-size: 18px; font-weight: 500; color: #fff; }
+/* Second path in the hero, for visitors who haven't been scammed. */
+.hero-alt { margin-top: 18px; max-width: 680px; padding: 20px 22px; border: 1px solid var(--line-dark); border-radius: 12px; background: rgba(255, 255, 255, .04); }
+.hero-alt-title { font-size: 17px; font-weight: 600; color: #fff; }
+.hero-alt-sub { margin-top: 4px; font-size: 14.5px; line-height: 1.5; color: var(--on-dark-muted); }
+.hero-alt .inline-form { max-width: none; }
+.hero-alt-check { margin-top: 14px; }
+@media (max-width: 640px) { .hero-alt { padding: 18px 16px; } .hero-alt-check { width: 100%; } }
 .hero-more { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 22px; max-width: 680px; }
 .hero-more-label { width: 100%; color: var(--on-dark-muted); font-size: 14px; }
 .btn-sm { min-height: 44px; padding: 0 16px; font-size: 13px; }
