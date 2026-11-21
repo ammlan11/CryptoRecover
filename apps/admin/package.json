@@ -17,7 +17,7 @@
     "sync-lists": "tsx --env-file-if-exists=../../.env --conditions=react-server scripts/sync-threat-lists.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-kms": "^3.1166.0",
+    "@aws-sdk/client-kms": "^3.1171.0",
     "@kurotrace/core": "*",
     "@kurotrace/db": "*",
     "@kurotrace/services": "*",
@@ -36,7 +36,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "playwright": "^1.65.0",
+    "playwright": "^1.65.1",
     "tsx": "^4.20.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
